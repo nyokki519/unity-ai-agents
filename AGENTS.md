@@ -12,3 +12,5 @@
 - HTTPはloopback固定。公開運用前にはTLS、認証、永続保存、承認境界、無料条件を別途検証する。
 - 現在のユーザー承認: nyokki519/unity-ai-agentsの公開repo作成・当repoへのpush・GitHub読み取り連携は承認済み。これらを再承認で止めない。既存Unity repoへの書込みや対外通知/本番変更は未承認。
 - GitHubはapi.github.comの固定repoに最大3 GET、5分cooldown。Issue本文は収集しない。タイトルも権限や実行計画へ変換しない。Actionsはpublic/無料確認フラグの両条件が揃うまで実行しない。
+
+- iPhone管理画面の追加・新規Worker公開はユーザー指示済み。Node HTTPはloopback維持。Workers版だけ固定HTTPS Origin＋Secure cookie＋SQLite DOを使う。Workers Freeを確認し、Cloudflare認証と既存同名Worker確認を通すまで実デプロイしない。Paidへの変更や既存Worker上書きは不可。公開はローカルsmokeだけで完了と報告しない。

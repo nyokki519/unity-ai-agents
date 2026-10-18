@@ -1,7 +1,7 @@
 import {assertNoCredentials} from './input-safety.js';
 import {randomUUID,randomBytes,timingSafeEqual} from 'node:crypto';
 import {CreateTask,REPOSITORY,Result,audit,type StateData,type TaskData,type ResultData} from './model.js';
-import {digest,plan,handoffPrompt,operationHash} from './planner.js';import {FileStore} from './store.js';
+import {digest,plan,handoffPrompt,operationHash} from './planner.js';import type {StateStore} from './state-store.js';
 export const MAX_ATTEMPTS=3; // initial execution + at most two retries
 const TRANSIENT=new Set(['temporarily_unavailable','timeout']);
 const output=(summary:string,unverified:string[]=[]):ResultData=>({summary,evidence:['この工程はローカル保存状態のみを参照。外部API・AI推論の実行なし。'],objections:[],unverified});
@@ -12,7 +12,7 @@ const defaultHandler:Handler=async({state,action})=>{
  throw new Error('executor_unavailable');
 };
 export class Engine{
- constructor(readonly store:FileStore,private handler:Handler=defaultHandler,private clock=()=>new Date(),private timeoutMs=1000){if(timeoutMs<10||timeoutMs>10_000)throw new Error('timeout_invalid');}
+ constructor(readonly store:StateStore,private handler:Handler=defaultHandler,private clock=()=>new Date(),private timeoutMs=1000){if(timeoutMs<10||timeoutMs>10_000)throw new Error('timeout_invalid');}
  async create(value:unknown){assertNoCredentials(value);const input=CreateTask.parse(value);if(input.repository!==REPOSITORY)throw new Error('repository_not_allowed');return this.store.transaction(state=>{
   const fingerprint=digest(JSON.stringify({instruction:input.instruction,repository:input.repository,priority:input.priority,dependencies:input.dependencies}));
   const prior=state.requests.find(r=>r.key===input.idempotencyKey);if(prior){if(prior.fingerprint!==fingerprint)throw new Error('idempotency_conflict');const task=state.tasks.find(t=>t.id===prior.taskId);if(!task)throw new Error('state_invalid_or_unreadable');return task;}

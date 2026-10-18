@@ -23,3 +23,7 @@ queued → running → queued/succeeded。推論はawaiting_inference、重要�
 
 ## GitHub読み取りの追加
 GitHubReaderとprivate JSONのscan状態、認証付きsync API、一覧/タスク化UIを追加した。詳細はdocs/GITHUB.md。外部書込みは引き続き存在しない。Actions日次workflowは準備済みだが、公開先・無料条件フラグ・実runは接続待ち。その他の未実装事項は変わらない。
+
+## iPhone用Workersアダプタ（追加）
+
+StateStoreのread/transaction境界を追加し、既存FileStoreは維持。CloudStoreはSQLite DOにJSONを分割保存しtransactionで検証/commit。CloudConsoleはfetch API用の認証/CSRF/固定Origin入口でEngine/GitHubReader/viewを再利用する。UnityConsoleが単一DOへのアクセスを直列化。静的3ファイルはWorkers Assets。クラウドセッションはstateとは別に保存。既存Node HTTPはloopbackのまま。実公開は認証・無料契約確認・HTTPS動作確認待ち。

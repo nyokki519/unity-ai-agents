@@ -12,15 +12,21 @@
     "cli": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.test.json && node --check public/app.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "cloud:check": "wrangler deploy --dry-run --outdir .runtime/worker-build",
+    "cloud:dev": "wrangler dev --local",
+    "cloud:deploy": "wrangler deploy",
+    "cloud:smoke": "node scripts/cloud-smoke.mjs"
   },
   "dependencies": {
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "miniflare": "5.20261012.1-beta",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "wrangler": "4.151.1"
   }
 }

@@ -1,4 +1,4 @@
-import {z} from 'zod';import {randomUUID} from 'node:crypto';import {REPOSITORY,audit} from './model.js';import {FileStore} from './store.js';import {GitHubSnapshot,type GitHubSnapshotData} from './github-model.js';
+import {z} from 'zod';import {randomUUID} from 'node:crypto';import {REPOSITORY,audit} from './model.js';import type {StateStore} from './state-store.js';import {GitHubSnapshot,type GitHubSnapshotData} from './github-model.js';
 const iso=z.iso.datetime({offset:true});
 const issueSchema=z.object({number:z.number().int().positive(),title:z.string().max(2000),updated_at:iso,comments:z.number().int().nonnegative(),assignees:z.array(z.unknown()).max(100),labels:z.array(z.unknown()).max(100),state:z.literal('open'),pull_request:z.unknown().optional()});
 const runSchema=z.object({id:z.number().int().positive(),workflow_id:z.number().int().positive(),head_branch:z.string().max(300).nullable(),status:z.literal('completed'),conclusion:z.string().max(50).nullable(),created_at:iso});
@@ -32,7 +32,7 @@ export class GitHubReader{
   }catch(e){if(e instanceof z.ZodError)throw new Error('github_schema_invalid');throw e;}
  }
 }
-export async function syncGitHub(store:FileStore,client=new GitHubReader(),clock=()=>new Date()){
+export async function syncGitHub(store:StateStore,client=new GitHubReader(),clock=()=>new Date()){
  const claim=await store.transaction(state=>{const now=clock();if(state.stopped)return {status:'stopped' as const};if(state.github?.leaseUntil&&Date.parse(state.github.leaseUntil)>now.getTime())return {status:'busy' as const};if(state.github&&now.getTime()-Date.parse(state.github.lastAttemptAt)<300000)return {status:'cooldown' as const};if(state.audit.length>998)throw new Error('audit_capacity_exceeded');const lease=randomUUID();state.github={lastAttemptAt:now.toISOString(),lastSuccessAt:state.github?.lastSuccessAt??null,error:null,lease,leaseUntil:new Date(now.getTime()+30000).toISOString(),snapshot:state.github?.snapshot??null};audit(state,'github_scan_started',now.toISOString());return {status:'claimed' as const,lease};});
  if(claim.status!=='claimed')return claim;
  let snapshot:GitHubSnapshotData|undefined,error:string|null=null;

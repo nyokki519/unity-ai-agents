@@ -15,3 +15,7 @@
 - .runtime/state.json等のstate、.env、鍵、参加者原本をGit/Issue/公開artifactに入れない。履歴は最大1000件（自動削除なし）、タスクは最大500、保存2MB。削除・クラウド移行は今後の承認済み操作として設計する。
 
 テスト範囲はローカルLinux/Node環境。Phase 2以降のWebhookは署名/時刻/再送検証を追加するまで受付不可。実行できない機能を模擬成功で返さない。
+
+## Workers版
+
+ローカルHTTPとは別の入口src/worker.tsを追加。HTTPS Origin固定、Secure cookie、永続化したセッション/レート制限とsecret変更時の失効を使用。SQLiteのtransaction/単一DOで競合を制御し、既存のZod/権限境界を再利用する。公開設定未完了時はAPIを停止する。Workerは任意URLのproxyにしない。クラウドとローカルの状態を自動統合しない。詳細と制約はdocs/CLOUDFLARE.md。

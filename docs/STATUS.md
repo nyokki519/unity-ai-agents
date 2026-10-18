@@ -1,5 +1,16 @@
 # 作業記録 — 2026-10-18 JST
 
+## iPhone管理画面の最新状態（2026-10-18・過去記録より優先）
+- ユーザー指示に基づきWorkers Free＋SQLite DO版を追加。既存Engine/UIを再利用し、StateStore境界だけ抽象化。既存Unity repo/本番は無変更。
+- CloudConsole: 固定HTTPS Origin、Secure/HttpOnly/SameSite cookie、1時間の永続セッション、CSRF、secret変更時の失効、永続rate limit。匿名アクセスで管理者の操作枠を消費しない。認証＋CSRFの緊急停止/ログアウトはアプリ内制限時も可能。重要操作は承認記録のみ。
+- CloudStore: transaction＋Zod、32KB以下の片、既存2MB/500タスク/履歴1000上限。ローカル状態は自動移行しない。GitHub Actionsの日次結果はWorkerに同期しない。
+- 最新検証: Vitest30成功、失敗/skip0。typecheck/build、Wrangler dry-run成功。実workerd＋SQLiteで静的UI、認証、タスク実行、ランタイム再作成後のstate/session保持、緊急停止、ログアウトを確認。390pxタッチブラウザ8画面/ログイン/ログアウト、横はみ出し0、JSエラー0（iPhone実機ではない）。
+- 独立レビューで匿名のquota消費問題を検出→回帰テストで再現→修正→再レビューでblockerなし。Miniflare v5の永続先指定をresourcePersistencePathに修正し、再起動を含む実storage確認を通した。
+- 無料条件: 公式Cloudflare docsをGitHub APIで確認。SQLite DOはFree対応、Free上限超過は停止。Paidは禁止。アプリflagは実契約の自動証明ではない。ユーザーはCloudflare無料アカウントを持っていると回答。
+- 設定draftへCLOUDFLARE_API_TOKEN入力要件とapi.cloudflare.com、独立repoのinstall/start手順を保存済み。既存設定保持。requires_publish=true。値は未登録/未検証で実Worker/URLはまだない。
+- 次回: token存在と通信反映を確認→対象アカウント/Free契約/同名Worker有無を確認→新規Workerのみ公開→管理者secret/固定Origin/Free確認設定→実HTTPSの未認証拒否/認証操作/永続化→iPhone実接続を確認する。proxy secretの値を抽出・記録しない。
+- セットアップはdocs/CLOUDFLARE.md。実URL公開とiPhone実機確認は未完了。今回の実装・当repoへのpushは既存承認内。
+
 ## 最新状態（以下の過去記録より優先）
 - 所有者が無料条件フラグを登録後、2026-10-18に両workflowを手動実行。verify run39132222063は依存導入/test/typecheck/buildの全step成功。read-only run39132225720は導入と実GitHub読取りstep成功。ともにskippedではない。日次cronは設定済みで、定期起動そのものは次回予定待ち。
 - Actions変数の直接取得は連携権限403のままだが、guardを通過した実jobで反映を確認。ログzip取得はネットワークForbiddenのため未取得。GitHub APIのjob/step完了結果で成功を検証した（今回runnerのテスト件数や監視件数は未取得）。

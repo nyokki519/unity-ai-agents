@@ -29,7 +29,7 @@ node --env-file=.env --import tsx src/cli.ts serve
 
 http://127.0.0.1:8787 を開き、そのtokenでログインします。.envは明示ロード時のみ読まれます。token未設定でも `npm run dev` で起動できますが、ログイン操作は拒否されます。
 
-ビルド後は `npm run build` → `node --env-file=.env dist/cli.js serve`。サーバーはloopback固定です。スマホ幅に対応していますが、iPhone実機から遠隔接続する配信経路は未設定です。公開URLを作る操作は承認待ちです。
+ビルド後は `npm run build` → `node --env-file=.env dist/cli.js serve`。サーバーはloopback固定です。スマホ幅に対応していますが、iPhone向けのWorkers Free版を追加しました。設定・公開手順は[Cloudflare管理画面](docs/CLOUDFLARE.md)を参照してください。実URLとCloudflare認証は設定待ちです。
 
 ## 試す
 
@@ -76,3 +76,7 @@ Actionsは手動検証と日次読み取りを用意しています。無料条�
 - [セキュリティと復旧](SECURITY.md)
 - [段階別ロードマップ](ROADMAP.md)
 - [作業記録・未対応事項](docs/STATUS.md)
+
+## iPhone用クラウド版
+
+同じUI・タスクエンジンをWorkers Free＋SQLite Durable Objectで実行できます。認証と永続保存を実装済み。`npm run cloud:check`（公開しないbundle検証）と `npm run cloud:smoke`（ローカルworkerd/SQLite検証）を利用してください。Cloudflareへの認証・Free確認・本番HTTPS検証は別途必要です。[セットアップ](docs/CLOUDFLARE.md)。
