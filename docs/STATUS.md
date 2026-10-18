@@ -1,6 +1,7 @@
 # 作業記録 — 2026-10-18 JST
 
 ## iPhone管理画面の最新状態（2026-10-18・過去記録より優先）
+- GitHub Actions run39133697640（commit486b1fd）はsuccess。依存導入/test/typecheck/build/cloud:check/cloud:smokeの各step成功をAPIで確認。実Cloudflare公開ではなくGitHub標準runner内のローカル検証。
 - ユーザー指示に基づきWorkers Free＋SQLite DO版を追加。既存Engine/UIを再利用し、StateStore境界だけ抽象化。既存Unity repo/本番は無変更。
 - CloudConsole: 固定HTTPS Origin、Secure/HttpOnly/SameSite cookie、1時間の永続セッション、CSRF、secret変更時の失効、永続rate limit。匿名アクセスで管理者の操作枠を消費しない。認証＋CSRFの緊急停止/ログアウトはアプリ内制限時も可能。重要操作は承認記録のみ。
 - CloudStore: transaction＋Zod、32KB以下の片、既存2MB/500タスク/履歴1000上限。ローカル状態は自動移行しない。GitHub Actionsの日次結果はWorkerに同期しない。
