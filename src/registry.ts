@@ -1,0 +1,6 @@
+import {roles} from './model.js';
+export const registry=roles.map(name=>({name,description:({Research:'情報収集・事実確認',Strategy:'企画・戦略',Developer:'開発・テスト計画',Marketing:'集客・広報',Analytics:'集計・分析',Auditor:'品質・安全・費用監査'})[name],tools:name==='Auditor'?['local.audit']:name==='Analytics'?['local.report','manual.handoff']:['manual.handoff'],input:'validated task + untrusted source data',output:'summary/evidence/objections/unverified',permissions:{automatic:['local_summary','manual_prompt'],externalWrites:false,paidInference:false},execution:name==='Auditor'?'rules':'rules_or_manual_handoff',alwaysRunning:false}));
+export const integrationNames=['GitHub','Google Sheets','Google Calendar','Gmail','LINE Messaging API','Unity Analytics','Unity QR','Unity PASS','Unity DROP','Vercel','Cloudflare'] as const;
+export interface Integration{readonly name:string;readonly configured:boolean;read(input:unknown):Promise<unknown>;}
+export class DisconnectedIntegration implements Integration{readonly configured=false;constructor(readonly name:string){}async read(_input:unknown):Promise<never>{throw new Error('integration_not_configured');}}
+export const integrations=integrationNames.map(name=>new DisconnectedIntegration(name));

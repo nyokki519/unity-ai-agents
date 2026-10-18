@@ -1,0 +1,41 @@
+'use strict';
+let csrf='',state=null,tab='ダッシュボード',busy=false;
+const tabs=['ダッシュボード','エージェント','タスク','実行履歴','承認待ち','連携状況','監査ログ','設定'];
+const $=id=>document.getElementById(id);
+const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
+const labels={queued:'実行待ち',running:'実行中',awaiting_inference:'ChatGPT / Codex引継ぎ待ち',awaiting_approval:'重要操作・承認待ち',blocked:'未対応 / 保留',paused:'中断',succeeded:'完了',failed:'失敗',held:'判断待ち',interrupted:'中断',approved:'承認記録済み',consumed:'トークン使用済み'};
+const date=x=>x?new Date(x).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'未実行';
+const card=(title,parent=$('content'))=>{const c=el('section',undefined,'card');c.append(el('h2',title));parent.append(c);return c;};
+const button=(text,action,parent)=>{const b=el('button',text);b.type='button';b.addEventListener('click',()=>perform(action));parent.append(b);return b;};
+async function request(path,value){const r=await fetch(path,{method:value===undefined?'GET':'POST',headers:{...(value===undefined?{}:{'Content-Type':'application/json'}),...(csrf?{'x-csrf-token':csrf}:{})},...(value===undefined?{}:{body:JSON.stringify(value)}),cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.error||'operation_failed');return d;}
+async function refresh(){state=await request('/api/state');render();}
+async function perform(action){if(busy)return;busy=true;$('notice').textContent='';document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await action();if(csrf)await refresh();}catch(e){$('notice').textContent='処理を完了できませんでした: '+e.message;}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
+function details(parent,title,text){const d=el('details');d.append(el('summary',title),el('pre',text));parent.append(d);}
+function render(){
+ $('mode').textContent=state.stopped?'緊急停止中':'ローカル・ルール実行';$('stop').textContent=state.stopped?'停止を解除':'緊急停止';
+ const nav=$('tabs');nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();});nav.append(b);}
+ $('content').replaceChildren();
+ if(tab==='ダッシュボード'){
+  const c=card('今日の状態（日本時間・実行工程単位）'),grid=el('div',undefined,'grid');for(const [label,value] of [['本日の実行',state.metrics.todayExecutions],['成功',state.metrics.success],['失敗',state.metrics.failed],['保留タスク',state.metrics.pending],['承認待ち',state.metrics.approvalWaiting]]){const item=el('div');item.append(el('p',label),el('span',String(value),'stat'));grid.append(item);}c.append(grid,el('p','最終実行: '+date(state.metrics.lastRun)),el('p','AI推論と外部サービスは未接続。ルール処理と人への引継ぎを区別して記録します。'));button('キューを1工程進める',()=>request('/api/run',{}),c);button('状態を再取得',async()=>{},c);
+ }
+ if(tab==='エージェント')for(const a of state.registry){const c=card(a.name+' Agent');c.append(el('p',a.description),el('p','使用可能: '+a.tools.join(', ')),el('small','必要時のみ。AIモデルの常駐プロセスではありません。'));details(c,'入出力と権限',JSON.stringify({input:a.input,output:a.output,permissions:a.permissions},null,2));}
+ if(tab==='タスク'){
+  const c=card('新しい指示'),form=el('form'),label=el('label','依頼内容'),input=el('textarea');input.required=true;input.maxLength=4000;input.placeholder='例: このシステムの稼働状態を確認 / 集客改善案を考えて';label.append(input);const select=el('select');for(const [value,text] of [['1','優先度 高'],['2','優先度 通常'],['3','優先度 低']]){const o=el('option',text);o.value=value;o.selected=value==='2';select.append(o);}const submit=el('button','指示を登録');form.append(label,select,submit);form.addEventListener('submit',e=>{e.preventDefault();perform(async()=>{await request('/api/tasks',{instruction:input.value,priority:Number(select.value),idempotencyKey:crypto.randomUUID()});input.value='';});});c.append(form,el('small','秘密情報・個人情報は入力しないでください。外部サービスの調査は、接続されるまで手動引継ぎになります。'));
+  for(const t of [...state.tasks].reverse().slice(0,50)){const item=card(t.instruction);item.append(el('span',labels[t.status]||t.status,'badge'),el('p','優先度 '+t.priority+' / '+date(t.createdAt)),el('small',t.id));if(t.dependencies.length)item.append(el('p','依存タスク: '+t.dependencies.join(', ')));if(['queued','running'].includes(t.status))button('中断',()=>request('/api/tasks/'+t.id+'/pause',{}),item);if(t.status==='paused')button('再開',()=>request('/api/tasks/'+t.id+'/resume',{}),item);
+   details(item,'実行計画',JSON.stringify(t.steps,null,2));if(t.error)item.append(el('p','診断: '+t.error));if(t.handoff){details(item,'ChatGPT / Codexへの引継ぎプロンプト',t.handoff);const l=el('label','人が確認した結果JSON'),area=el('textarea');area.placeholder='{"summary":"要約","evidence":[],"objections":[],"unverified":[]}';l.append(area);item.append(l);button('結果を取り込む（内容は未検証として扱う）',()=>request('/api/tasks/'+t.id+'/handoff',JSON.parse(area.value)),item);}
+  }
+  if(state.tasks.length>50)c.append(el('p','画面は最新50件です。保存容量は最大500タスク。'));
+ }
+ if(tab==='実行履歴'){
+  const c=card('実行履歴・自己改善の基礎集計');c.append(el('p','定期実行は未設定です。ここには手動で進めたローカル工程を記録します。'));details(c,'実行統計',JSON.stringify(state.optimization,null,2));for(const r of [...state.runs].reverse().slice(0,50))c.append(el('p',`${date(r.startedAt)} / ${labels[r.status]||r.status} / 試行${r.attempt}/3 / ${r.durationMs}ms / ${r.error||'—'}`));
+ }
+ if(tab==='承認待ち'){
+  const pending=state.tasks.filter(t=>t.status==='awaiting_approval');const c=card('重要操作の承認');c.append(el('p','Phase 1では本番デプロイ・外部送信などの実行器は未実装です。承認を記録しても実操作は行いません。有効期限15分・対象固定・単回トークンの仕組みを備えています。'));if(!pending.length)c.append(el('p','承認待ちはありません。'));for(const t of pending){const item=card(t.instruction,c);details(item,'固定された対象と計画',JSON.stringify({repository:t.repository,steps:t.steps,operationHash:t.operationHash},null,2));button('承認を記録（実操作は未対応）',async()=>{if(!confirm('対象と操作を確認し、15分有効の承認を記録します。実操作は行いません。'))return;await request('/api/tasks/'+t.id+'/approve',{operationHash:t.operationHash});},item);const a=state.approvals.find(a=>a.taskId===t.id);if(a)item.append(el('p',a.expired?'承認記録は期限切れです。':'承認記録の期限: '+date(a.expiresAt)));}
+ }
+ if(tab==='連携状況')for(const i of state.integrations){const c=card(i.name);c.append(el('span',i.status,'badge'),el('p',i.name==='GitHub'?'Phase 3で最初に読み取り連携を実装します。':'インターフェースと未接続モックのみ。'));}
+ if(tab==='監査ログ'){const c=card('操作・エラー・監査ログ');for(const a of [...state.audit].reverse().slice(0,100))c.append(el('p',`${date(a.at)} / ${a.event} / ${a.code||'—'} / ${a.taskId||''}`));if(!state.audit.length)c.append(el('p','操作記録はありません。'));}
+ if(tab==='設定'){const c=card('安全な初期設定');c.append(el('p','許可リポジトリ: nyokki519/unity-ai-agents'),el('p','外部送信先: なし / 有料API: 実装なし / 定期実行: 無効'),el('p','追加費用: ローカル処理0円。既存PC・ネットワーク費用は利用者の環境に依存します。'),el('p','GitHub Actions無料枠利用量: 未接続 / クラウド利用量: 未接続'),el('p','認証済みセッションは1時間。管理者トークンはブラウザ保存しません。'),el('p','この画面はスマホ幅に対応しています。iPhoneからの実接続は、承認済みの安全な配信経路を別途設定する必要があります。'));details(c,'利用状況',JSON.stringify(state.usage,null,2));details(c,'権限レベルと固定ポリシー',JSON.stringify(state.policy,null,2));}
+}
+$('login-form').addEventListener('submit',e=>{e.preventDefault();perform(async()=>{const token=$('token').value;$('token').value='';const result=await request('/api/login',{token});csrf=result.csrf;$('login').hidden=true;$('workspace').hidden=false;});});
+$('stop').addEventListener('click',()=>perform(async()=>{if(!state.stopped&&!confirm('実行中の結果を中断し、新しい実行を停止します。'))return;await request('/api/stop',{stopped:!state.stopped});}));
+$('logout').addEventListener('click',()=>perform(async()=>{await request('/api/logout',{});csrf='';state=null;$('content').replaceChildren();$('workspace').hidden=true;$('login').hidden=false;}));

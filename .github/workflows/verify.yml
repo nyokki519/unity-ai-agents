@@ -1,0 +1,24 @@
+name: Manual free-only verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: unity-agents-verification
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: ${{ vars.UNITY_FREE_ACTIONS_CONFIRMED == 'true' && github.event.repository.visibility == 'public' && github.event.repository.private == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
