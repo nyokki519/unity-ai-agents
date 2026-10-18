@@ -37,3 +37,7 @@ GitHub remote作成/push/公開、GitHub Actions実行、GitHub Issue/PR通信�
 - 環境設定draftへapi.github.comだけを追加保存済み。既存api.vercel.comとAnalyticsのdomain・presetを保持。requires_publish=true、現在の実行環境には未反映。ユーザーの環境設定保存・再公開が必要。
 - その後の順序: gh api userでowner確認→対象repoの存在/公開状態確認→未存在ならgh repo create nyokki519/unity-ai-agents --public --source=. --remote=origin --push→公開状態再確認→無料条件フラグを新repoだけに設定→手動verify/readonly workflowを起動→実データと実行履歴を確認する。既存remoteがあれば勝手に上書き/force-pushしない。
 - 公開、GitHub remote追加、実workflow有効化・起動はまだ行っていない。新しい承認の取り直しは不要で、通信反映後に既存認証を再試行する。
+
+## 環境公開後の接続確認
+api.github.comの許可は反映され、gh api userでnyokki519を確認した。通信blockerは解消。新repoはAPIで404。承認に基づきgh repo createを試したが、GitHubから `Resource not accessible by integration (createRepository)` と拒否された。現在の連携にはrepo作成権限がない。repo/remote/pushはまだ作成していない。
+ユーザーがGitHub画面でpublicなnyokki519/unity-ai-agentsを空で作成した後、対象/公開状態/空の状態を確認し、既存認証でremote追加・pushを進める。GitHub作成権限を回避したり、他の秘密を抽出して認証を代用しない。公開承認の取り直しは不要。
