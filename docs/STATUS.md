@@ -1,5 +1,13 @@
 # 作業記録 — 2026-10-18 JST
 
+## 最新状態（以下の過去記録より優先）
+- ユーザーが空のpublic repoを作成。公開状態・空のmainを確認し、origin追加、mainを通常push。ローカル/remoteの567b5c50e7bcf9423a7f71fdad5bd74cc7d01f32一致を確認。
+- 実接続: `node --use-env-proxy dist/cli.js github-scan --summary` はsuccess、API3回、Issue0、finding0。秘密値/ローカルstateはpushしていない。
+- GitHub Actions変数設定はHTTP403 `Resource not accessible by integration`。現在のGitHub連携には変数変更権限がない。権限を迂回せず、所有者のVariables設定待ち。
+- 手動dispatch自体は成功。verify run39131817364とread-only run39131822941はともにskipped（jobのstep実行なし）。Actions上のテスト/監視成功とは報告しない。無料条件フラグのガードは維持。
+- 所有者の残作業: Settings → Secrets and variables → Actions → VariablesでUNITY_FREE_ACTIONS_CONFIRMED=trueを登録。登録後に両workflowを実行して実runner検証する。iPhone遠隔管理・自動AI推論・既存Unityデータ連携は引き続き未対応。
+- 今回は文書のみ更新。既存の22テスト/typecheck/build成功を再利用し、実APIとremote/Actions状態を追加確認。
+
 ## 対象と完了範囲
 - 新規独立ローカルrepo `/workspace/unity-ai-agents` のPhase 0〜1。
 - 既存Unityリポジトリ・DB・本番・LINE・Vercel・Cloudflareは変更なし。
