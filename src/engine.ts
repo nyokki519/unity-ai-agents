@@ -21,12 +21,24 @@ export class Engine{
   if(input.dependencies.some(id=>!state.tasks.some(t=>t.id===id)))throw new Error('dependency_missing');if(state.tasks.length>=500)throw new Error('task_capacity_exceeded');
   const steps=plan(input.instruction),now=this.clock().toISOString();const task:TaskData={...input,repository:REPOSITORY,id:randomUUID(),fingerprint,steps,status:steps[0]!.action.startsWith('protected.')?'awaiting_approval':'queued',createdAt:now,updatedAt:now,attempts:0,retryAt:null,lease:null,leaseUntil:null,handoff:null,error:null};state.tasks.push(task);state.requests.push({key:input.idempotencyKey,fingerprint,taskId:task.id});audit(state,'task_created',now,task.id);return task;
  });}
- async runNext(){
+ async createAndAdvance(value:unknown){
+  const created=await this.create(value);let advanced=0,status:string=created.status;
+  // A submitted task only; no unrelated queue draining or delayed retry loop.
+  for(let i=0;i<3;i++){
+   const task=(await this.store.read()).tasks.find(t=>t.id===created.id)!;
+   if(task.status!=='queued'||task.retryAt)break;
+   const result=await this.runNext(created.id);status=result.status;
+   if(!('taskId' in result))break;
+   advanced++;
+  }
+  return {task:(await this.store.read()).tasks.find(t=>t.id===created.id)!,automatic:{advanced,status}};
+ }
+ async runNext(taskId?:string){
   const claim=await this.store.transaction(state=>{const now=this.clock();
    if(state.stopped)return {status:'stopped' as const};
    for(const task of state.tasks)if(task.status==='running'&&task.leaseUntil&&Date.parse(task.leaseUntil)<=now.getTime()){const run=state.runs.find(r=>r.id===task.lease);if(run){run.status='interrupted';run.finishedAt=now.toISOString();run.error='lease_expired';}task.status=task.attempts<MAX_ATTEMPTS?'queued':'failed';task.lease=null;task.leaseUntil=null;task.error='lease_expired';audit(state,'lease_recovered',now.toISOString(),task.id);}
    if(state.tasks.some(t=>t.status==='running'))return {status:'busy' as const};
-   const task=state.tasks.filter(t=>t.status==='queued'&&t.attempts<MAX_ATTEMPTS&&(!t.retryAt||Date.parse(t.retryAt)<=now.getTime())&&t.dependencies.every(id=>state.tasks.some(d=>d.id===id&&d.status==='succeeded'))).sort((a,b)=>a.priority-b.priority||a.createdAt.localeCompare(b.createdAt))[0];
+   const task=state.tasks.filter(t=>(!taskId||t.id===taskId)&&t.status==='queued'&&t.attempts<MAX_ATTEMPTS&&(!t.retryAt||Date.parse(t.retryAt)<=now.getTime())&&t.dependencies.every(id=>state.tasks.some(d=>d.id===id&&d.status==='succeeded'))).sort((a,b)=>a.priority-b.priority||a.createdAt.localeCompare(b.createdAt))[0];
    if(!task)return {status:'idle' as const};const step=task.steps.find(s=>s.status==='pending');if(!step)throw new Error('plan_invalid');
    if(step.action.startsWith('protected.')){task.status='awaiting_approval';return {status:'held' as const};}
    const lease=randomUUID();task.status='running';task.attempts++;task.lease=lease;task.leaseUntil=new Date(now.getTime()+this.timeoutMs+5000).toISOString();task.updatedAt=now.toISOString();

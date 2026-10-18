@@ -1,5 +1,13 @@
 # 作業記録 — 2026-10-18 JST
 
+## 登録時の自動実行（2026-10-19 JST・最優先）
+- 所有者から管理画面ログイン/手動タスク完了の報告あり。続いて登録時の安全な自動実行を依頼された。
+- Engine.createAndAdvanceを追加。登録タスクだけ最大3工程、runNextのtaskId制約で別タスクを選ばない。既存idempotency/依存/緊急停止/retry/承認/推論の境界を再利用。APIの新規指示とGitHub確認タスクを対象とする。CLI/手動キューは維持。
+- report/auditは登録時に完了。引継ぎ/承認待ち/失敗/停止では停止。retryAtがあるタスクの自動連打をしない。常駐/新しい定期実行/有料AIはなし。
+- 検証: 先に追加テスト2件を失敗確認→実装。最終Vitest32成功、typecheck/build/dry-run成功、実workerd＋SQLiteで手動runを押さず完了/再起動保持を確認。独立コードレビューでblockerなし。
+- 自分たちが作成したunity-ai-agents Workerだけ更新済み。version19e21280-e451-49d7-9823-290bab9340b8が100% activeをAPIで確認。管理者secretのbinding、固定Origin、Freeフラグ、同一DO namespaceの保持を確認。秘密値/ユーザーstateは読出しも再登録もしていない。
+- 実URLへの直接アクセスは当環境のegress制限が残るため、更新後の実端末操作は未確認。利用者は画面再読込後に新規指示を登録すればよく、管理者キー再設定は不要。
+
 ## Workers公開済み（2026-10-19 JST・最優先）
 - 所有者がWorkers Freeを明示確認。既存同名Workerなし確認後、新規unity-ai-agentsだけをwrangler deployで公開。既存DROP/QR/その他Workerは未変更。
 - URL: https://unity-ai-agents.kukki519.workers.dev 。version25b087d2-361d-42c9-a84d-180dca5d7f40、deployment dd1da11d-77b4-4421-a44c-bd11019c8600をAPIで確認（100%）。workers.dev enabled、preview disabled。

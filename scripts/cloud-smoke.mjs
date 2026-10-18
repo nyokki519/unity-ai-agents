@@ -15,13 +15,11 @@ try{
  const login=await post('/api/login',{token});assert.equal(login.status,200);assert.match(login.headers.get('set-cookie'),/Secure/);
  const {csrf}=await login.json(),headers={cookie:login.headers.get('set-cookie').split(';')[0],'x-csrf-token':csrf};
  assert.equal((await post('/api/tasks',{instruction:'このシステムの稼働状態を確認',idempotencyKey:'worker-smoke'},headers)).status,201);
- assert.equal((await post('/api/run',{},headers)).status,200);
- assert.equal((await post('/api/run',{},headers)).status,200);
  let state=await (await mf.dispatchFetch(origin+'/api/state',{headers})).json();assert.equal(state.tasks[0].status,'succeeded');assert.equal(state.runs.length,2);
  await mf.dispose();mf=new Miniflare(convertV4MiniflareOptions(options));
  const restored=await mf.dispatchFetch(origin+'/api/state',{headers});assert.equal(restored.status,200,'restart response '+await restored.clone().text());state=await restored.json();assert.equal(state.tasks.length,1);assert.equal(state.runs.length,2);
  assert.equal((await post('/api/stop',{stopped:true},headers)).status,200);
  state=await (await mf.dispatchFetch(origin+'/api/state',{headers})).json();assert.equal(state.stopped,true);
  assert.equal((await post('/api/logout',{},headers)).status,200);assert.equal((await mf.dispatchFetch(origin+'/api/state',{headers})).status,401);
- console.log('PASS: workerd assets/auth/CSRF/task execution/SQLite restart persistence/emergency stop/logout');
+ console.log('PASS: workerd assets/auth/CSRF/automatic task execution/SQLite restart persistence/emergency stop/logout');
 }finally{await mf.dispose();await rm(directory,{recursive:true,force:true});}

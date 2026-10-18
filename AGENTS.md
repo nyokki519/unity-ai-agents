@@ -14,3 +14,5 @@
 - GitHubはapi.github.comの固定repoに最大3 GET、5分cooldown。Issue本文は収集しない。タイトルも権限や実行計画へ変換しない。Actionsはpublic/無料確認フラグの両条件が揃うまで実行しない。
 
 - iPhone管理画面の追加・新規Worker公開はユーザー指示済み。Node HTTPはloopback維持。Workers版だけ固定HTTPS Origin＋Secure cookie＋SQLite DOを使う。Workers Freeを確認し、Cloudflare認証と既存同名Worker確認を通すまで実デプロイしない。Paidへの変更や既存Worker上書きは不可。公開はローカルsmokeだけで完了と報告しない。
+
+- 当repoが作成済みのunity-ai-agents Workerは、ユーザー指示による機能更新の対象。通常更新では管理者secret/変数/同一DO namespaceを保持し、再登録や状態初期化をしない。他の既存Workerは変更しない。登録時の自動実行は提出タスクだけ最大3工程で停止し、承認/推論/失敗を越えない。

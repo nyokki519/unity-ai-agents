@@ -11,3 +11,17 @@ describe('phase 1 orchestrator',()=>{
 });
 it('deduplication reserves every accepted request key against later conflicting payloads',async()=>{const f=await fixture();try{const a=await f.engine.create({instruction:'稼働状態',idempotencyKey:'alias-key-0001'});const b=await f.engine.create({instruction:'稼働状態',idempotencyKey:'alias-key-0002'});expect(a.id).toBe(b.id);await expect(f.engine.create({instruction:'別の依頼',idempotencyKey:'alias-key-0002'})).rejects.toThrow('idempotency_conflict');}finally{await f.cleanup();}});
 it('rejects credential patterns before saving them',async()=>{const f=await fixture();try{await expect(f.engine.create({instruction:'token sk-'+ 'x'.repeat(32),idempotencyKey:'secret-key-0001'})).rejects.toThrow('secret_detected');expect((await f.store.read()).tasks).toHaveLength(0);}finally{await f.cleanup();}});
+it('automatically advances only the submitted task, deduplicates completed requests, and respects stop',async()=>{const f=await fixture();try{
+ const other=await f.engine.create({instruction:'稼働状態を確認 別件',idempotencyKey:'older-auto-task'});
+ const input={instruction:'このシステムの稼働状態を確認',idempotencyKey:'auto-submit-task'};
+ const result=await f.engine.createAndAdvance(input);expect(result.task.status).toBe('succeeded');
+ expect((await f.store.read()).tasks.find(t=>t.id===other.id)?.status).toBe('queued');
+ expect((await f.store.read()).runs).toHaveLength(2);
+ expect((await f.engine.createAndAdvance(input)).task.id).toBe(result.task.id);expect((await f.store.read()).runs).toHaveLength(2);
+ await f.engine.stop(true);expect((await f.engine.createAndAdvance({...input,idempotencyKey:'auto-stopped-task'})).task.status).toBe('queued');expect((await f.store.read()).runs).toHaveLength(2);
+}finally{await f.cleanup();}});
+it('automatic submission holds for inference and approval without executing protected work',async()=>{const f=await fixture();try{
+ expect((await f.engine.createAndAdvance({instruction:'イベントの集客改善案を考えて',idempotencyKey:'auto-handoff-task'})).task.status).toBe('awaiting_inference');
+ expect((await f.engine.createAndAdvance({instruction:'本番デプロイして',idempotencyKey:'auto-protected-task'})).task.status).toBe('awaiting_approval');
+ expect((await f.store.read()).runs).toHaveLength(1);expect((await f.store.read()).usage.aiCalls).toBe(0);
+}finally{await f.cleanup();}});

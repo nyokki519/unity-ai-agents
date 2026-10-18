@@ -82,3 +82,7 @@ Actionsは手動検証と日次読み取りを用意しています。無料条�
 同じUI・タスクエンジンをWorkers Free＋SQLite Durable Objectで実行できます。認証と永続保存を実装済み。`npm run cloud:check`（公開しないbundle検証）と `npm run cloud:smoke`（ローカルworkerd/SQLite検証）を利用してください。Cloudflareへの認証・Free確認・本番HTTPS検証は別途必要です。[セットアップ](docs/CLOUDFLARE.md)。
 
 公開先: https://unity-ai-agents.kukki519.workers.dev 。初回利用前にCloudflareのWorker Settings → Variables and Secretsで `UNITY_ADMIN_TOKEN` をSecretとして登録してください。値は32文字以上のランダムなものを使い、チャットやGitへ貼らないでください。
+
+## 登録時の自動実行
+
+管理画面で指示を登録すると、そのタスクだけを最大3工程まで自動で進めます。稼働状態の確認はreport/auditの2工程で完了します。AI引継ぎ・承認・依存待ち・失敗・緊急停止では停止し、遅延retryを連打しません。過去の別タスクを勝手に処理しません。手動の1工程ボタンは残しています。常駐スケジューラーやAIの自動推論ではありません。CLIのtaskは従来どおり登録だけです。

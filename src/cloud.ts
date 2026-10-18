@@ -91,14 +91,14 @@ export class CloudConsole {
     const data=view(await this.store.read());return json({...data,usage:{...data.usage,mode:'cloud_rules_only',cloudUsage:null}});
    }
    if(req.method!=='POST')return json({error:'not_found'},404);
-   if(path==='/api/tasks')return json({task:await this.engine.create(await readBody(req))},201);
+   if(path==='/api/tasks')return json(await this.engine.createAndAdvance(await readBody(req)),201);
    if(path==='/api/run')return json(await this.engine.runNext());
    if(path==='/api/stop'){const input=z.object({stopped:z.boolean()}).strict().parse(await readBody(req));if(access.limited&&!input.stopped)return json({error:'rate_limited'},429);return json(await this.engine.stop(input.stopped));}
    if(path==='/api/github/sync')return json(await syncGitHub(this.store,new GitHubReader(fetch,()=>new Date(),'')));
    if(path==='/api/github/tasks'){
     const input=z.object({key:z.string().max(120)}).strict().parse(await readBody(req));const finding=(await this.store.read()).github?.snapshot?.findings.find(f=>f.key===input.key);
     if(!finding)return json({error:'github_finding_missing'},400);const ci=finding.kind==='ci_failure';
-    return json({task:await this.engine.create({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')})});
+    return json(await this.engine.createAndAdvance({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')}));
    }
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/(pause|resume|handoff|approve)$/);
    if(match){const id=z.uuid().parse(match[1]);switch(match[2]){

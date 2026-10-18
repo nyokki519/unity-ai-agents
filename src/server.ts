@@ -33,9 +33,9 @@ export function createApp({store=new FileStore(),adminToken=process.env.UNITY_AD
    if(path==='/api/logout'&&req.method==='POST'){sessions.delete(sid);res.setHeader('Set-Cookie','unity_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return json({ok:true});}
    if(path==='/api/state'&&req.method==='GET')return json(view(await store.read()));
    if(req.method!=='POST')return json({error:'not_found'},404);
-   if(path==='/api/tasks')return json({task:await engine.create(await body(req))},201);
+   if(path==='/api/tasks')return json(await engine.createAndAdvance(await body(req)),201);
    if(path==='/api/github/sync')return json(await syncGitHub(store));
-   if(path==='/api/github/tasks'){const input=z.object({key:z.string().max(120)}).strict().parse(await body(req));const snapshot=(await store.read()).github?.snapshot,finding=snapshot?.findings.find(f=>f.key===input.key);if(!finding)return json({error:'github_finding_missing'},400);const ci=finding.kind==='ci_failure';return json({task:await engine.create({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')})});}
+   if(path==='/api/github/tasks'){const input=z.object({key:z.string().max(120)}).strict().parse(await body(req));const snapshot=(await store.read()).github?.snapshot,finding=snapshot?.findings.find(f=>f.key===input.key);if(!finding)return json({error:'github_finding_missing'},400);const ci=finding.kind==='ci_failure';return json(await engine.createAndAdvance({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')}));}
    if(path==='/api/run')return json(await engine.runNext());
    if(path==='/api/stop'){const value=z.object({stopped:z.boolean()}).strict().parse(await body(req));return json(await engine.stop(value.stopped));}
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/(pause|resume|handoff|approve)$/);

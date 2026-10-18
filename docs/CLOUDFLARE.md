@@ -25,6 +25,6 @@ Cloudflareの **Workers Free** アカウントのみ。Workers Paidや有料ア�
 - 設定したHTTPS Originだけ許可。CookieはSecure/HttpOnly/SameSite=Strict、1時間。CSRFはメモリのみ。再読込み時は再ログイン。管理者secret変更で既存セッション失効。
 - セッション/ログイン制限はDOに保存され、再起動でリセットされない。ログイン5回/分、認証済みAPI120回/分・2000回/日。未認証の読取りは管理者の操作枠を消費しない。認証＋CSRFを満たす緊急停止・ログアウトはアプリ内上限時も許可（停止解除は制限対象）。プロバイダ自体の停止を回避できるものではない。攻撃でログイン不能になる場合は窓の更新を待つ。Cloudflareの追加防御はFree範囲を確認して所有者が設定する。
 - SQLiteのtransactionで状態を検証して原子的に保存。32KB以下の片に分割、500タスク/2MB/履歴1000件。満杯で停止し、自動削除しない。無期限のバックアップや改ざん防止台帳ではない。
-- Workerは常駐タスクを回さない。タスク実行は管理画面の1工程実行。GitHub Actionsの日次結果とWorker保存状態は自動同期しない。GitHub読取りは公開repoを認証なしで取得するためGitHub側のIP制限で失敗する場合もある。
+- Workerは常駐タスクを回さない。新規タスク登録時にそのタスクだけ最大3工程を自動実行する。手動の1工程実行も可能。引継ぎ・承認・依存待ち・失敗・停止は人の対応待ち。GitHub Actionsの日次結果とWorker保存状態は自動同期しない。GitHub読取りは公開repoを認証なしで取得するためGitHub側のIP制限で失敗する場合もある。
 - 監査は既存のtask/実行/承認ログ。指示本文・認証値・生エラーはconsoleに出さない。Cloudflare observabilityは初期OFF。
 - 認証情報を失った場合はDashboardでsecretを再設定する。secretをIssueに書かない。DO/Worker削除はデータ消失につながるため、自動で実行しない。

@@ -22,8 +22,8 @@ describe('cloud console security and persistence',()=>{
   const storage=new MemoryStorage();let app=new CloudConsole(storage,env);
   const response=await app.fetch(req('/api/login',{token}));expect(response.headers.get('set-cookie')).toContain('Secure');
   const headers=await login(app);
-  expect((await app.fetch(req('/api/tasks',{instruction:'状況をレポートして',idempotencyKey:'cloud-test'}, {cookie:headers.cookie}))).status).toBe(403);
-  const created=await app.fetch(req('/api/tasks',{instruction:'状況をレポートして',idempotencyKey:'cloud-test'},headers));expect(created.status).toBe(201);
+  expect((await app.fetch(req('/api/tasks',{instruction:'このシステムの稼働状態を確認',idempotencyKey:'cloud-test'}, {cookie:headers.cookie}))).status).toBe(403);
+  const created=await app.fetch(req('/api/tasks',{instruction:'このシステムの稼働状態を確認',idempotencyKey:'cloud-test'},headers));expect(created.status).toBe(201);expect((await created.json() as {task:{status:string}}).task.status).toBe('succeeded');
   app=new CloudConsole(storage,env);
   const state=await (await app.fetch(req('/api/state',undefined,headers))).json() as {tasks:unknown[]};expect(state.tasks).toHaveLength(1);
   expect((await app.fetch(req('/api/stop',{stopped:true},headers))).status).toBe(200);
