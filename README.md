@@ -65,7 +65,7 @@ UIの実ブラウザ検証方法はtests/browser_smoke.py。Python Playwrightと
 ## GitHub / 自律実行の初期状態
 
 公開先は [nyokki519/unity-ai-agents](https://github.com/nyokki519/unity-ai-agents) です。この独立repoへの初回pushと実GitHub読み取り（3 GET成功）を確認しました。既存Unity repo・本番・対外送信は変更していません。
-Actionsは手動検証と日次読み取りを用意しています。無料条件を確認してUNITY_FREE_ACTIONS_CONFIRMED=trueを設定した公開repoだけが標準ランナーで実行可能です。private repoは常に停止。cache/artifact/large runnerは使いません。現在のGitHub連携にはActions変数の変更権限がなく、フラグ設定は所有者の操作待ちです。PR作成は未実装です。詳細は[GitHub連携](docs/GITHUB.md)。
+Actionsは手動検証と日次読み取りを用意しています。無料条件を確認してUNITY_FREE_ACTIONS_CONFIRMED=trueを設定した公開repoだけが標準ランナーで実行可能です。private repoは常に停止。cache/artifact/large runnerは使いません。所有者が無料条件フラグを設定済み。Actions上でテスト・型検査・ビルドとGitHub監視の各step成功を確認しました。日次監視は日本時間07:35前後です（遅延・省略の可能性あり）。PR作成は未実装です。詳細は[GitHub連携](docs/GITHUB.md)。
 
 ## 運用上の境界
 

@@ -23,7 +23,7 @@ node --use-env-proxy --import tsx src/cli.ts github-scan
 
 ## 定期実行の準備
 `.github/workflows/github-read.yml` は毎日UTC22:35（JST翌07:35頃）と手動起動。標準ubuntuランナー、5分上限、contents/issues/actions readのみ、cache/artifactなし。
-公開repoとUNITY_FREE_ACTIONS_CONFIRMED=trueが両方確認できるまでjobはスキップする。公開先への初回pushと実APIの3 GET成功を確認済み。現在の連携で変数設定は403となるため、所有者がSettings → Secrets and variables → Actions → Variables → New repository variableで名前 `UNITY_FREE_ACTIONS_CONFIRMED`、値 `true` を登録する（SecretsではなくVariables）。その後Actionsから各workflowのRun workflowで起動する。日次実行は有効化後の日本時間07:35前後。定刻や実行自体はGitHubの稼働状況によって遅延・省略される場合がある。
+公開repoとUNITY_FREE_ACTIONS_CONFIRMED=trueが両方確認できるまでjobはスキップする。公開先への初回pushと実APIの3 GET成功を確認済み。2026-10-18に所有者がフラグを登録し、両workflowの実step成功を確認済み。再設定が必要な場合は、現在の連携で変数設定は403となるため、所有者がSettings → Secrets and variables → Actions → Variables → New repository variableで名前 `UNITY_FREE_ACTIONS_CONFIRMED`、値 `true` を登録する（SecretsではなくVariables）。その後Actionsから各workflowのRun workflowで起動する。日次実行は有効化後の日本時間07:35前後。定刻や実行自体はGitHubの稼働状況によって遅延・省略される場合がある。
 実行結果はGitHub Actions履歴とJob Summaryへ件数だけ記録する。Issue本文/タイトル、ローカル状態全体を公開artifactにしない。ランナーのローカルJSONは次回runへ継承しないため、管理画面のローカル履歴とActions実行履歴は別。Issue/PRを自動作成する機能はない。
 
 ## まだできないこと

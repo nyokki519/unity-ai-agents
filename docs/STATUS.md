@@ -1,6 +1,9 @@
 # 作業記録 — 2026-10-18 JST
 
 ## 最新状態（以下の過去記録より優先）
+- 所有者が無料条件フラグを登録後、2026-10-18に両workflowを手動実行。verify run39132222063は依存導入/test/typecheck/buildの全step成功。read-only run39132225720は導入と実GitHub読取りstep成功。ともにskippedではない。日次cronは設定済みで、定期起動そのものは次回予定待ち。
+- Actions変数の直接取得は連携権限403のままだが、guardを通過した実jobで反映を確認。ログzip取得はネットワークForbiddenのため未取得。GitHub APIのjob/step完了結果で成功を検証した（今回runnerのテスト件数や監視件数は未取得）。
+- 以後の設定待ち/未実行の記述は過去の経緯。今回の登録に関するユーザーの残作業はない。
 - ユーザーが空のpublic repoを作成。公開状態・空のmainを確認し、origin追加、mainを通常push。ローカル/remoteの567b5c50e7bcf9423a7f71fdad5bd74cc7d01f32一致を確認。
 - 実接続: `node --use-env-proxy dist/cli.js github-scan --summary` はsuccess、API3回、Issue0、finding0。秘密値/ローカルstateはpushしていない。
 - GitHub Actions変数設定はHTTP403 `Resource not accessible by integration`。現在のGitHub連携には変数変更権限がない。権限を迂回せず、所有者のVariables設定待ち。
