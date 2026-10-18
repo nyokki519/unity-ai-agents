@@ -1,5 +1,12 @@
 # 作業記録 — 2026-10-18 JST
 
+## Cloudflare接続再開（2026-10-19 JST）
+- 環境公開後にCLOUDFLARE_API_TOKENの存在と公式/user/tokens/verifyのactive、accounts API成功を確認。秘密値は未出力。
+- 対象accountのWorker一覧を確認し、unity-ai-agentsは未存在。既存3 Workerは変更しない。workers.dev subdomainはkukki519。
+- Workers契約の/subscriptions取得は403。account-settingsのstandardは料金プランの証拠とせず、所有者へWorkers Freeかを確認中。Free回答前はデプロイしない。
+- Wrangler dry-run成功。予定URLのHTTPS確認はegress proxyのTunnel403で遮断。実URL検証にはそのドメインのネットワーク許可または利用者の確認が必要。
+- 新Workerの実アップロード、管理者secret登録、実認証操作はまだ未実施。
+
 ## iPhone管理画面の最新状態（2026-10-18・過去記録より優先）
 - GitHub Actions run39133697640（commit486b1fd）はsuccess。依存導入/test/typecheck/build/cloud:check/cloud:smokeの各step成功をAPIで確認。実Cloudflare公開ではなくGitHub標準runner内のローカル検証。
 - ユーザー指示に基づきWorkers Free＋SQLite DO版を追加。既存Engine/UIを再利用し、StateStore境界だけ抽象化。既存Unity repo/本番は無変更。
