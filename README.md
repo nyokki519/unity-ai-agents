@@ -29,7 +29,7 @@ node --env-file=.env --import tsx src/cli.ts serve
 
 http://127.0.0.1:8787 を開き、そのtokenでログインします。.envは明示ロード時のみ読まれます。token未設定でも `npm run dev` で起動できますが、ログイン操作は拒否されます。
 
-ビルド後は `npm run build` → `node --env-file=.env dist/cli.js serve`。サーバーはloopback固定です。スマホ幅に対応していますが、iPhone向けのWorkers Free版を追加しました。設定・公開手順は[Cloudflare管理画面](docs/CLOUDFLARE.md)を参照してください。実URLとCloudflare認証は設定待ちです。
+ビルド後は `npm run build` → `node --env-file=.env dist/cli.js serve`。サーバーはloopback固定です。スマホ幅に対応していますが、iPhone向けのWorkers Free版を追加しました。設定・公開手順は[Cloudflare管理画面](docs/CLOUDFLARE.md)を参照してください。Cloudflareへの公開は完了し、管理者キーの設定と実URLでのログイン確認が残っています。
 
 ## 試す
 
@@ -80,3 +80,5 @@ Actionsは手動検証と日次読み取りを用意しています。無料条�
 ## iPhone用クラウド版
 
 同じUI・タスクエンジンをWorkers Free＋SQLite Durable Objectで実行できます。認証と永続保存を実装済み。`npm run cloud:check`（公開しないbundle検証）と `npm run cloud:smoke`（ローカルworkerd/SQLite検証）を利用してください。Cloudflareへの認証・Free確認・本番HTTPS検証は別途必要です。[セットアップ](docs/CLOUDFLARE.md)。
+
+公開先: https://unity-ai-agents.kukki519.workers.dev 。初回利用前にCloudflareのWorker Settings → Variables and Secretsで `UNITY_ADMIN_TOKEN` をSecretとして登録してください。値は32文字以上のランダムなものを使い、チャットやGitへ貼らないでください。

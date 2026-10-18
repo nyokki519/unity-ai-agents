@@ -1,5 +1,13 @@
 # 作業記録 — 2026-10-18 JST
 
+## Workers公開済み（2026-10-19 JST・最優先）
+- 所有者がWorkers Freeを明示確認。既存同名Workerなし確認後、新規unity-ai-agentsだけをwrangler deployで公開。既存DROP/QR/その他Workerは未変更。
+- URL: https://unity-ai-agents.kukki519.workers.dev 。version25b087d2-361d-42c9-a84d-180dca5d7f40、deployment dd1da11d-77b4-4421-a44c-bd11019c8600をAPIで確認（100%）。workers.dev enabled、preview disabled。
+- ASSETS/SQLite DO binding、固定HTTPS Origin、UNITY_FREE_CLOUD_CONFIRMED=trueをsettings APIで確認。UNITY_ADMIN_TOKEN bindingはまだないためアプリAPIは実装上fail closed。
+- 残作業: 所有者がWorker Settings → Variables and SecretsでUNITY_ADMIN_TOKENをSecretとして32文字以上のランダム値で登録・Deployし、その値でログインする。チャット/公開repoに値を送らない。
+- この実行環境から実URLへのHTTPSはegress proxyのTunnel403で未検証。iPhoneの実URLログイン/タスク保存を利用者が確認するか、そのドメインの環境ネットワーク許可後に確認する。デプロイAPI成功をエンドユーザー動作成功とは報告しない。
+- サブスクリプション閲覧403は継続。Free契約は所有者の回答に基づく。Paid変更/支払い/既存repo変更なし。
+
 ## Cloudflare接続再開（2026-10-19 JST）
 - 環境公開後にCLOUDFLARE_API_TOKENの存在と公式/user/tokens/verifyのactive、accounts API成功を確認。秘密値は未出力。
 - 対象accountのWorker一覧を確認し、unity-ai-agentsは未存在。既存3 Workerは変更しない。workers.dev subdomainはkukki519。
