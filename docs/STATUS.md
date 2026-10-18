@@ -27,3 +27,13 @@ GitHub remote作成/push/公開、GitHub Actions実行、GitHub Issue/PR通信�
 
 ## 次回の入口
 このファイルとROADMAP.mdを読み、Phase 2〜3のGitHub読み取り/schedulerを検討する。既存Unityコードを読む必要はない。公開repoの承認・無料条件・private dataの保管先・最小権限の接続を決めてから有効化する。推論や対外操作を勝手に接続しない。
+
+## GitHub公開承認後の作業（2026-10-18 JST）
+- ユーザーはnyokki519/unity-ai-agentsの公開作成・push・読み取り連携を明示承認済み。既存repoの変更は未承認のまま。
+- 実装: 最大3 GETの固定repo reader、open Issue/停滞/最新completed CI失敗、5分cooldown/lease/中断/実試行カウンター、private repo/redirect/不正schema拒否、認証付き読み取りUI、source keyによる重複しないローカルタスク化。外部タイトルを指示として採用しない。
+- 日次readonly workflowを準備。public + UNITY_FREE_ACTIONS_CONFIRMED=trueだけで標準runnerを使用。APIの権限はcontents/issues/actions readのみ。cache/artifactなし、公開Job Summaryは件数のみ。
+- 検証: Vitest22成功、typecheck/build成功、既存browser smoke成功。実GitHub API/実workflowは未検証。state/env/ビルド出力の追跡なしを確認。
+- 接続上のblocker: gh api userはapi.github.comへの通信許可不足でForbidden。GH_TOKENは存在するので新規tokenを要求していない。Gitのreadは使えるが、対象repoのls-remoteはRepository not found（非存在/未許可を区別できない）。
+- 環境設定draftへapi.github.comだけを追加保存済み。既存api.vercel.comとAnalyticsのdomain・presetを保持。requires_publish=true、現在の実行環境には未反映。ユーザーの環境設定保存・再公開が必要。
+- その後の順序: gh api userでowner確認→対象repoの存在/公開状態確認→未存在ならgh repo create nyokki519/unity-ai-agents --public --source=. --remote=origin --push→公開状態再確認→無料条件フラグを新repoだけに設定→手動verify/readonly workflowを起動→実データと実行履歴を確認する。既存remoteがあれば勝手に上書き/force-pushしない。
+- 公開、GitHub remote追加、実workflow有効化・起動はまだ行っていない。新しい承認の取り直しは不要で、通信反映後に既存認証を再試行する。

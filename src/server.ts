@@ -1,3 +1,4 @@
+import {syncGitHub} from './github.js';
 import http,{type IncomingMessage,type ServerResponse} from 'node:http';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';import {readFile} from 'node:fs/promises';import {resolve} from 'node:path';import {z} from 'zod';
 import {Engine} from './engine.js';import {FileStore} from './store.js';import {view} from './view.js';
 const safeErrors=new Set(['repository_not_allowed','idempotency_conflict','dependency_missing','task_capacity_exceeded','request_capacity_exceeded','audit_capacity_exceeded','history_capacity_exceeded','handoff_not_expected','task_not_pauseable','task_not_resumable','approval_target_changed','approval_invalid','state_locked','state_invalid_or_unreadable','state_capacity_exceeded','secret_detected']);
@@ -33,6 +34,8 @@ export function createApp({store=new FileStore(),adminToken=process.env.UNITY_AD
    if(path==='/api/state'&&req.method==='GET')return json(view(await store.read()));
    if(req.method!=='POST')return json({error:'not_found'},404);
    if(path==='/api/tasks')return json({task:await engine.create(await body(req))},201);
+   if(path==='/api/github/sync')return json(await syncGitHub(store));
+   if(path==='/api/github/tasks'){const input=z.object({key:z.string().max(120)}).strict().parse(await body(req));const snapshot=(await store.read()).github?.snapshot,finding=snapshot?.findings.find(f=>f.key===input.key);if(!finding)return json({error:'github_finding_missing'},400);const ci=finding.kind==='ci_failure';return json({task:await engine.create({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')})});}
    if(path==='/api/run')return json(await engine.runNext());
    if(path==='/api/stop'){const value=z.object({stopped:z.boolean()}).strict().parse(await body(req));return json(await engine.stop(value.stopped));}
    const match=path.match(/^\/api\/tasks\/([0-9a-f-]{36})\/(pause|resume|handoff|approve)$/);

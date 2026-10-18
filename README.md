@@ -1,6 +1,6 @@
 # Unity AI Agents
 
-追加月額費用0円を初期条件とする、独立した運営エージェント基盤。**Phase 0〜1のローカル最小構成**です。既存Unityのコード・DB・公開環境は変更しません。
+追加月額費用0円を初期条件とする、独立した運営エージェント基盤。**Phase 0〜1＋GitHub読み取り連携のローカル構成**です。既存Unityのコード・DB・公開環境は変更しません。
 
 ## 今できること
 
@@ -9,7 +9,7 @@
 - JSON永続化、履歴、タイムアウト、最大2回の再試行、lease、中断/再開、緊急停止。
 - AIが必要な依頼はChatGPT/Codexへ渡す構造化プロンプトを生成。結果の手動取り込み。無人AI推論ではありません。
 - 対象/操作を固定した15分有効・単回の承認token基盤。重要操作の実行器は未実装なので、承認してもデプロイ/外部送信しません。
-- 認証付きレスポンシブ管理画面の8画面、CLI、ローカル実行の集計。外部サービスは未接続モック。
+- 認証付きレスポンシブ管理画面の8画面、CLI、ローカル実行の集計。GitHubの読み取りアダプタを追加。他の外部サービスは未接続モック。
 
 ## セットアップ
 
@@ -65,7 +65,7 @@ UIの実ブラウザ検証方法はtests/browser_smoke.py。Python Playwrightと
 ## GitHub / 自律実行の初期状態
 
 GitHub remoteはまだ作成/接続していません。公開・既存repoへのpush・本番変更・対外送信は実施しません。
-Actionsは手動workflowのみで、初期状態ではjobをスキップします。無料条件を確認してUNITY_FREE_ACTIONS_CONFIRMED=trueを設定した公開repoだけが標準ランナーで実行可能です。private repoは常に停止。cache/artifact/large runnerは使いません。定期実行・Issue読取り・PR作成は未実装です。
+Actionsは手動workflowのみで、初期状態ではjobをスキップします。無料条件を確認してUNITY_FREE_ACTIONS_CONFIRMED=trueを設定した公開repoだけが標準ランナーで実行可能です。private repoは常に停止。cache/artifact/large runnerは使いません。日次読み取りworkflowとIssue/CI読取りを実装しましたが、公開先への接続と無料確認フラグ設定は未完了です。PR作成は未実装です。詳細は[GitHub連携](docs/GITHUB.md)。
 
 ## 運用上の境界
 

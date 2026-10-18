@@ -4,8 +4,8 @@
 |---|---|---|
 |0|公式無料条件・Codex契約利用・安全な初期値|検証済み。公開/課金設定は変更なし|
 |1|TypeScript司令塔、queue/依存、JSON保存、6役、手動引継ぎ、権限制御、ローカルUI、CLI|実装済み。公開先・GitHub remoteなし|
-|2|自律scheduler、停滞検知、稼働集計、Webhook署名|未実装。無料Actions条件と保存先を確定後|
-|3|GitHub読み取り、Issues依頼、CI失敗、重複防止|未実装。Allowlist/最小権限GitHub App等を選定|
+|2|自律scheduler、停滞検知、稼働集計、Webhook署名|日次readonly workflow準備済み。公開/無料条件フラグ/実runは未完了|
+|3|GitHub読み取り、Issues依頼、CI失敗、重複防止|固定repoの読み取り・一覧/タスク化を実装。API通信と公開先の接続待ち|
 |4|複数視点の議論、反論/根拠/未検証の評価|手動promptと出力schemaのみ。実モデルは未接続|
 |5|外部アプリ連携|契約/未接続モックのみ。GitHub以外は後回し|
 |6|承認されたlevel2実行器、内部通知、重要操作の承認UI|期限/単回primitiveのみ実装。実行器は未実装|

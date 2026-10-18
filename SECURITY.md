@@ -7,7 +7,7 @@
 - 個人データ/秘密をタスクへ入力しない。代表的なAPI token/Private key形式は保存前に拒否するが、完全な秘密検出器ではない。
 - UIはtextContentのみで外部文字列を描画。任意HTML、shell、eval、URL fetchは実装しない。
 - 外部サービス・Issue・Webページ・手動AI出力は信頼しない。結果は厳密なZod schemaで受領し権限・toolを変更しない。
-- repo Allowlistはnyokki519/unity-ai-agentsのみ。外部送信先Allowlistは空。既存Unityシステムには接続/変更しない。
+- repo Allowlistはnyokki519/unity-ai-agentsのみ。GitHub連携の接続先はapi.github.comの固定repo、GETのみ。外部書込み先Allowlistは空。既存Unityシステムには接続/変更しない。
 - 承認はtarget/operation hash・15分期限・単回token。DBにはtoken hashのみ。承認画面で記録してもPhase 1の重要操作は実行されない。
 - ローカルJSONは暗号化DB/耐改ざん台帳ではない。同じOSユーザーによるファイル編集は防げない。ディスク/OSアカウントを保護する。
 - 書込みは排他lock+原子的rename+fsync。JSON破損時に空データで置換しない。実行lease失効時の再試行は最大3試行内。停止後の遅い結果は棄却する。

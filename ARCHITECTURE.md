@@ -20,3 +20,6 @@ queued → running → queued/succeeded。推論はawaiting_inference、重要�
 
 ## 現時点で存在しないもの
 定期実行、Webhook受付、GitHub実通信、Issue/PR作成、外部送信、デプロイ、参加者操作、有料/無料の自動モデル推論、実モデル同士の議論、クラウド永続化。UIの履歴は手動ローカル工程で、自律運転実績ではない。
+
+## GitHub読み取りの追加
+GitHubReaderとprivate JSONのscan状態、認証付きsync API、一覧/タスク化UIを追加した。詳細はdocs/GITHUB.md。外部書込みは引き続き存在しない。Actions日次workflowは準備済みだが、公開先・無料条件フラグ・実runは接続待ち。その他の未実装事項は変わらない。

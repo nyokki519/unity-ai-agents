@@ -4,11 +4,11 @@ import {CreateTask,REPOSITORY,Result,audit,type StateData,type TaskData,type Res
 import {digest,plan,handoffPrompt,operationHash} from './planner.js';import {FileStore} from './store.js';
 export const MAX_ATTEMPTS=3; // initial execution + at most two retries
 const TRANSIENT=new Set(['temporarily_unavailable','timeout']);
-const output=(summary:string,unverified:string[]=[]):ResultData=>({summary,evidence:['ローカル保存状態のみを参照。外部API・AI推論の実行なし。'],objections:[],unverified});
+const output=(summary:string,unverified:string[]=[]):ResultData=>({summary,evidence:['この工程はローカル保存状態のみを参照。外部API・AI推論の実行なし。'],objections:[],unverified});
 export type Handler=(context:{task:TaskData;state:StateData;action:string},signal:AbortSignal)=>Promise<ResultData>;
 const defaultHandler:Handler=async({state,action})=>{
  if(action==='local.report')return output(`ローカルタスク${state.tasks.length}件、完了${state.tasks.filter(t=>t.status==='succeeded').length}件、保留${state.tasks.filter(t=>['awaiting_inference','awaiting_approval','blocked'].includes(t.status)).length}件。実行記録${state.runs.length}件。`,['GitHub・Unityサービスの実データは未接続。']);
- if(action==='local.audit')return output('ルール監査完了。登録されたローカル処理のみを実行。有料推論0回・外部操作0回。',['人が受け渡した分析の事実・提案効果は未検証。']);
+ if(action==='local.audit')return output('ルール監査完了。登録されたローカル処理のみを実行。有料推論0回・外部書き込み0回。',['人が受け渡した分析の事実・提案効果は未検証。']);
  throw new Error('executor_unavailable');
 };
 export class Engine{
