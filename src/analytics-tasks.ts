@@ -1,3 +1,4 @@
+import {analyticsGuidance,formatGuidance} from './analytics-guidance.js';
 import {Engine} from './engine.js';
 import type {StateStore} from './state-store.js';
 import {syncAnalytics} from './analytics.js';
@@ -22,7 +23,7 @@ export async function createAnalyticsTasks(store:StateStore){
  try{
   for(const finding of claim.findings){
    const time=finding.startsAt?`\n開催予定日時: ${finding.startsAt}`:'';
-   const instruction=`Analytics確認: ${finding.title}${time}\n確認番号: ${finding.key}\n検出時: ${claim.observedAt}\n根拠: ${finding.evidence}\n確認内容: ${finding.check}\nこれはルールによる確認候補です。確認専用タスクです。`;
+   const instruction=`Analytics確認: ${finding.title}${time}\n確認番号: ${finding.key}\n検出時: ${claim.observedAt}\n根拠: ${finding.evidence}\n確認内容: ${finding.check}\nこれはルールによる確認候補です。確認専用タスクです。\n${formatGuidance(analyticsGuidance(finding.kind))}`;
    const task=await engine.create({instruction,priority:finding.priority,idempotencyKey:requestKey(finding.key)});
    created++;await engine.runNext(task.id);
   }
