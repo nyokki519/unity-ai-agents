@@ -1,3 +1,4 @@
+import {syncAnalytics} from './analytics.js';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
 import {State,emptyState,type StateData} from './model.js';
@@ -35,7 +36,7 @@ export class CloudStore implements StateStore {
 const Auth=z.object({epoch:z.string().default(''),sessions:z.array(z.object({hash:z.string(),csrf:z.string(),expires:z.number()})).max(100),minute:z.number(),logins:z.number(),calls:z.number(),day:z.string(),daily:z.number()});
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 const equal=(a:string,b:string)=>timingSafeEqual(Buffer.from(digest(a),'hex'),Buffer.from(digest(b),'hex'));
-export type CloudEnv={UNITY_ADMIN_TOKEN?:string;UNITY_PUBLIC_ORIGIN?:string;UNITY_FREE_CLOUD_CONFIRMED?:string};
+export type CloudEnv={UNITY_ANALYTICS_READ_TOKEN?:string;UNITY_ADMIN_TOKEN?:string;UNITY_PUBLIC_ORIGIN?:string;UNITY_FREE_CLOUD_CONFIRMED?:string};
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'Strict-Transport-Security':'max-age=31536000'};
 async function readBody(req:Request){
  const reader=req.body?.getReader();if(!reader)return {};
@@ -94,6 +95,7 @@ export class CloudConsole {
    if(path==='/api/tasks')return json(await this.engine.createAndAdvance(await readBody(req)),201);
    if(path==='/api/run')return json(await this.engine.runNext());
    if(path==='/api/stop'){const input=z.object({stopped:z.boolean()}).strict().parse(await readBody(req));if(access.limited&&!input.stopped)return json({error:'rate_limited'},429);return json(await this.engine.stop(input.stopped));}
+   if(path==='/api/analytics/sync')return json(await syncAnalytics(this.store,this.env.UNITY_ANALYTICS_READ_TOKEN??''));
    if(path==='/api/github/sync')return json(await syncGitHub(this.store,new GitHubReader(fetch,()=>new Date(),'')));
    if(path==='/api/github/tasks'){
     const input=z.object({key:z.string().max(120)}).strict().parse(await readBody(req));const finding=(await this.store.read()).github?.snapshot?.findings.find(f=>f.key===input.key);

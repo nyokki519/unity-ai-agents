@@ -1,5 +1,14 @@
 # 作業記録 — 2026-10-18 JST
 
+## Analytics読取り準備（2026-10-20 JST・最優先）
+- 利用者が現URL https://unity-analytics.vercel.app を確認。旧previewへの匿名/専用tokenのGETはいずれもCONNECT403。現URLへの通信許可/既存proxy-secret送信先は未設定で、認証を未許可hostへ転送していない。
+- Analytics GitHub package.jsonは読めるがapp/api/agent/summary/route.tsは404。ローカルのroute/lib/testは以前のuntrackedファイルで、既存repoには今回書き込んでいない。本番に手動公開されているかは未確認。
+- 新Agents側: 固定endpointのGET/redirect拒否、1MB/12秒、source/期間/日時/重複ID/数値検証、集計だけの保存と連携画面を追加。予約残数/実参加/PVを分離し欠損母数を表示。収益/リピート率/満足度はnull。イベント名/参加者情報/元payloadは保存しない。
+- 1時間cooldown、試行数、失敗/最終成功、停止/再開のstopCount fence。Worker専用UNITY_ANALYTICS_READ_TOKENは未設定なので外部呼出し0の設定待ち状態。既存のproxy secretを抽出してWorkerに転用していない。
+- 検証: 新Agents Vitest37成功、typecheck/build/dry-run/workerd smoke成功。独立review指摘のstop-resume遅延結果を再現して修正、再review blockerなし。既存Analyticsの追加予定専用APIテスト6件もread-only実行して成功、既存コードの変更なし。
+- 新Workerのみversion743f4eea-7b04-4d57-b90f-42d34e5586a7へ更新、100% active。既存secret/変数/同じSQLite namespace保持確認。実データ取得・実URLでの新機能確認は未完了。
+- 次の承認対象: Analytics側の専用API2実装ファイル＋テスト追加をGitへ反映し公開。元の「既存Unity関連システムは変更しない」指定のため未実行。DB/既存画面変更不要。詳細docs/ANALYTICS.md。その後に専用キーと現ドメインの送信先設定、実HTTPと集計検証が必要。
+
 ## 登録時の自動実行（2026-10-19 JST・最優先）
 - 所有者から管理画面ログイン/手動タスク完了の報告あり。続いて登録時の安全な自動実行を依頼された。
 - Engine.createAndAdvanceを追加。登録タスクだけ最大3工程、runNextのtaskId制約で別タスクを選ばない。既存idempotency/依存/緊急停止/retry/承認/推論の境界を再利用。APIの新規指示とGitHub確認タスクを対象とする。CLI/手動キューは維持。
