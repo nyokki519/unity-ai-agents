@@ -1,5 +1,14 @@
 # 作業記録 — 2026-10-18 JST
 
+## Workers通信オプションの修正（2026-10-20 JST・最優先）
+- 利用者からanalytics_connection_failed報告。Cloudflare workerdの小さなnative fetch probeでredirect:errorがTypeError（manual/followのみ対応）になることを再現。キー不一致とは断定せず、キーは変更していない。
+- Analyticsと同じ欠陥を持つGitHub readerをredirect:manualへ修正。既存の全非2xx拒否でリダイレクトを追跡せず、認証値の別host転送なし。
+- 実workerd＋ローカル模擬upstreamでAnalytics HTTP取得を実行する回帰テストを追加。修正前は同じconnection_failed、修正後はsuccess。302は単一リクエストで拒否し、移動先へ送らないことを検証。外部ネットワーク迂回ではなく模擬応答のみ。
+- 失敗後のcooldownは5分へ、成功後は1時間を維持。残り秒数をAPI/UIへ表示。自動retry/常駐処理は追加しない。
+- Vitest37成功、typecheck/build/dry-run/native-fetchを含むworkerd smoke成功。独立reviewでblockerなし。
+- Worker version848ac58d-6a19-4652-802b-fddfa91cec6cが100% active。管理者/Analyticsのsecret binding、Origin、Freeフラグ、同一SQLite namespace保持を確認。既存Analytics本番への変更なし。
+- 実データの再取得は当環境の直接egress制限と管理者session不所持により利用者の画面操作待ち。再読み込み→連携状況→Unity Analytics→集計データを読み取る。キー再登録は不要。待機中なら画面の残秒後に再試行する。
+
 ## 読取りキー設定後（2026-10-20 JST・最優先）
 - 所有者がVercel AGENT_READ_TOKENとWorker UNITY_ANALYTICS_READ_TOKENを登録。Workerは最初plain_textだったため設定変更を依頼し、変更後settings APIでsecret_textを確認した。秘密値は読出し/ログ出力なし。
 - Vercelへの設定反映用にGitHub APIの認証済みdefault identityで同一tree commit0666e086を作成。既存コードの変更なし・force-pushなし。Vercel Deployment has completed（success）を確認。

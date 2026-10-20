@@ -3,7 +3,7 @@ import {readAnalytics,syncAnalytics} from '../src/analytics.js';
 const url='https://unity-analytics.vercel.app/api/agent/summary';
 const sample={schema_version:'1',source:'unity-analytics:93279',observed_at:'2026-10-20T00:00:00Z',source_updated_at:null,timezone:'Asia/Tokyo',period:{start:'2026-07-20T00:00:00Z',end:'2026-11-03T00:00:00Z'},sync_status:'partial',events:[{event_id:'one',starts_at:'2026-10-01T00:00:00Z',status:'completed',bookings_active:12,attended:10,pv:100,title:'do not persist',email:'private@example.com'},{event_id:'two',starts_at:'2026-10-22T00:00:00Z',status:'open',bookings_active:5,attended:null,pv:null}]};
 it('projects only aggregate counts, distinguishes bookings and attendance, and preserves missing metrics',async()=>{
- let calls=0;const snapshot=await readAnalytics(url,'test-token',async(input,init)=>{calls++;expect(String(input)).toBe(url);expect(init?.method).toBe('GET');expect(init?.redirect).toBe('error');return Response.json(sample);});
+ let calls=0;const snapshot=await readAnalytics(url,'test-token',async(input,init)=>{calls++;expect(String(input)).toBe(url);expect(init?.method).toBe('GET');expect(init?.redirect).toBe('manual');return Response.json(sample);});
  expect(calls).toBe(1);expect(snapshot.bookings).toEqual({value:17,knownEvents:2,totalEvents:2});expect(snapshot.attendance).toEqual({value:10,knownEvents:1,totalEvents:1});expect(snapshot.revenue).toBeNull();expect(snapshot.repeatRate).toBeNull();expect(snapshot.satisfaction).toBeNull();expect(JSON.stringify(snapshot)).not.toContain('private@example.com');expect(JSON.stringify(snapshot)).not.toContain('do not persist');
 });
 it('fails closed for missing credentials, non-allowlisted destinations and redirects',async()=>{
@@ -26,6 +26,8 @@ it('persists safe failures, suppresses repeated reads, and respects stop/configu
   await store.transaction(s=>{s.stopped=false;});expect((await syncAnalytics(store,'token',reader)).status).toBe('failed');
   expect((await syncAnalytics(store,'token',reader)).status).toBe('cooldown');expect(calls).toBe(1);
   const state=await store.read();expect(state.analytics?.error).toBe('analytics_read_failed');expect(JSON.stringify(state)).not.toContain('sensitive failure');expect(state.usage.externalApiCalls).toBe(1);
+  await store.transaction(s=>{s.analytics!.lastAttemptAt=new Date(Date.now()-6*60000).toISOString();});
+  expect((await syncAnalytics(store,'token',reader)).status).toBe('failed');expect(calls).toBe(2);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 it('discards a pre-stop response even when the system has already resumed',async()=>{

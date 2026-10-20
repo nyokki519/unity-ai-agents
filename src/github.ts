@@ -10,7 +10,7 @@ export class GitHubReader{
   if(this.apiCalls>=3)throw new Error('github_request_budget');
   if(this.transport===fetch&&(process.env.HTTPS_PROXY||process.env.HTTP_PROXY)&&process.env.NODE_USE_ENV_PROXY!=='1'&&!process.execArgv.includes('--use-env-proxy'))throw new Error('github_proxy_configuration_required');
   this.apiCalls++;
-  let response:Response;try{response=await this.transport(`https://api.github.com/repos/${REPOSITORY}${suffix}`,{method:'GET',redirect:'error',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...this.token?{Authorization:'Bearer '+this.token}:{}},signal:AbortSignal.timeout(5000)});}catch{throw new Error('github_connection_failed');}
+  let response:Response;try{response=await this.transport(`https://api.github.com/repos/${REPOSITORY}${suffix}`,{method:'GET',redirect:'manual',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...this.token?{Authorization:'Bearer '+this.token}:{}},signal:AbortSignal.timeout(5000)});}catch{throw new Error('github_connection_failed');}
   if(!response.ok||response.status<200||response.status>=300)throw new Error('github_http_'+response.status);
   const remaining=response.headers.get('x-ratelimit-remaining');if(remaining!==null&&/^\d+$/.test(remaining))this.remaining=Number(remaining);
   const reader=response.body?.getReader();if(!reader)throw new Error('github_schema_invalid');const chunks:Uint8Array[]=[];let size=0;
