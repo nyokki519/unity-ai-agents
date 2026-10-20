@@ -1,10 +1,11 @@
+import {detectAnalyticsFindings} from './analytics-findings.js';
 import {z} from 'zod';
 import {randomUUID} from 'node:crypto';
 import {AnalyticsSnapshot,type AnalyticsSnapshotData} from './analytics-model.js';
 import type {StateStore} from './state-store.js';
 export const ANALYTICS_URL='https://unity-analytics.vercel.app/api/agent/summary';
 const count=z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable(),date=z.iso.datetime({offset:true});
-const event=z.object({event_id:z.string().min(1).max(100),starts_at:date,status:z.enum(['cancelled','completed','open','closed','scheduled']),bookings_active:count,attended:count,pv:count});
+const event=z.object({event_id:z.string().min(1).max(100),starts_at:date,status:z.enum(['cancelled','completed','open','closed','scheduled']),capacity:count.optional().default(null),bookings_active:count,attended:count,pv:count});
 const envelope=z.object({schema_version:z.literal('1'),source:z.literal('unity-analytics:93279'),timezone:z.literal('Asia/Tokyo'),observed_at:date,source_updated_at:date.nullable(),period:z.object({start:date,end:date}),sync_status:z.enum(['complete','partial']),events:z.array(event).max(500)});
 /** Fixed endpoint only; titles/IDs/PII and unrecognised fields are never persisted. */
 export async function readAnalytics(url:string,token:string,transport:typeof fetch=fetch):Promise<AnalyticsSnapshotData>{
@@ -23,7 +24,7 @@ export async function readAnalytics(url:string,token:string,transport:typeof fet
  if(new Set(data.events.map(e=>e.event_id)).size!==data.events.length||start>=end||end-start>366*86400000||observed>Date.now()+300000||(data.source_updated_at&&Date.parse(data.source_updated_at)>observed)||data.events.some(e=>Date.parse(e.starts_at)<start||Date.parse(e.starts_at)>=end))throw new Error('analytics_schema_invalid');
  const events=data.events.filter(e=>e.status!=='cancelled'),past=events.filter(e=>Date.parse(e.starts_at)<observed);
  const sum=(rows:typeof events,field:'bookings_active'|'attended'|'pv')=>{const known=rows.filter(e=>e[field]!==null);return {value:known.length?known.reduce((n,e)=>n+e[field]!,0):null,knownEvents:known.length,totalEvents:rows.length};};
- return AnalyticsSnapshot.parse({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,period:data.period,syncStatus:data.sync_status,events:events.length,pastEvents:past.length,upcomingEvents:events.length-past.length,bookings:sum(events,'bookings_active'),attendance:sum(past,'attended'),pageviews:sum(events,'pv'),revenue:null,repeatRate:null,satisfaction:null});
+ return AnalyticsSnapshot.parse({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,period:data.period,syncStatus:data.sync_status,findings:detectAnalyticsFindings({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,syncStatus:data.sync_status,events:data.events}),events:events.length,pastEvents:past.length,upcomingEvents:events.length-past.length,bookings:sum(events,'bookings_active'),attendance:sum(past,'attended'),pageviews:sum(events,'pv'),revenue:null,repeatRate:null,satisfaction:null});
 }
 export async function syncAnalytics(store:StateStore,token:string,reader:()=>Promise<AnalyticsSnapshotData>=()=>readAnalytics(ANALYTICS_URL,token)){
  if(!token)return {status:'not_configured' as const};
@@ -33,7 +34,7 @@ export async function syncAnalytics(store:StateStore,token:string,reader:()=>Pro
   const waitMs=s.analytics?.error?5*60000:3600000;
   if(s.analytics?.lastAttemptAt){const remaining=waitMs-(Date.now()-Date.parse(s.analytics.lastAttemptAt));if(remaining>0){retryAfterSeconds=Math.ceil(remaining/1000);return 'cooldown';}}
   stopCount=s.safety.stopCount;
-  s.analytics={lastAttemptAt:now,lastSuccessAt:s.analytics?.lastSuccessAt??null,snapshot:s.analytics?.snapshot??null,error:null,lease};s.usage.externalApiCalls++;return 'started';
+  s.analytics={tasksProcessedAt:null,lastAttemptAt:now,lastSuccessAt:s.analytics?.lastSuccessAt??null,snapshot:s.analytics?.snapshot??null,error:null,lease};s.usage.externalApiCalls++;return 'started';
  });
  if(start!=='started')return {status:start,...start==='cooldown'?{retryAfterSeconds}:{}};
  let snapshot:AnalyticsSnapshotData|null=null,error:string|null=null;

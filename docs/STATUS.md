@@ -1,5 +1,14 @@
 # 作業記録 — 2026-10-18 JST
 
+## 根拠付き候補と内部タスク化（2026-10-20 JST・最優先）
+- 利用者が実データの取得成功を報告。その後、細分類は後回しにして次の改善へ進む指示を受けた。
+- 新Agents repoだけ変更。readAnalyticsの検証済み一時データから、募集中/7日以内/予約率50%未満、2日以上過ぎた実参加未取得、完全性/鮮度不足を判定。予約不足にはcomplete＋36h以内を要求し、不完全なデータから断定しない。開催有無や欠損原因も断定しない。
+- 元ID/名前/個票は保持せず、SHA確認キー・日時・数値根拠を最大20件保存。snapshot.findings=[]とtasksProcessedAt optionalで旧状態を保持し、次の新しい取得から判定。
+- 成功取得後に未登録候補から最大3タスクを生成し、既存Engineで手動引継ぎまで進める。atomicバッチ予約・固定idempotency key・stopCount/snapshot fence・容量上限を維持。登録済み/完了済みは再作成しない。残り候補は次回取得。AI呼出し/対外操作/常駐処理の追加なし。
+- 検証: Vitest44成功、typecheck/build/dry-run成功。実workerdのnative取得→候補→1タスク作成→再起動保持/元ID非保存を確認。390px実ブラウザで候補/根拠表示→タスク→引継ぎ、横はみ出し/JSエラー0。並行予約、後続scan、stop-resume、容量時のsnapshot保持も回帰テスト。独立review blockerなし。
+- Worker version612a7b9d-c60a-4fdf-ba74-89138df76c82が100% active。既存secretとSQLite namespaceを保持。既存Analytics側のコード/DB/設定は変更なし。
+- 実利用者の新候補/タスクは次の取得後に確認する。成功後1h/失敗後5分の取得間隔は維持。仮の確認基準と細分類/AI分析未実装をUI/docsに明記。docs/ANALYTICS-TASKS.md参照。
+
 ## Workers通信オプションの修正（2026-10-20 JST・最優先）
 - 利用者からanalytics_connection_failed報告。Cloudflare workerdの小さなnative fetch probeでredirect:errorがTypeError（manual/followのみ対応）になることを再現。キー不一致とは断定せず、キーは変更していない。
 - Analyticsと同じ欠陥を持つGitHub readerをredirect:manualへ修正。既存の全非2xx拒否でリダイレクトを追跡せず、認証値の別host転送なし。

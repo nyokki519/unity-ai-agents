@@ -1,4 +1,4 @@
-import {syncAnalytics} from './analytics.js';
+import {syncAndPlanAnalytics} from './analytics-tasks.js';
 import {syncGitHub} from './github.js';
 import http,{type IncomingMessage,type ServerResponse} from 'node:http';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';import {readFile} from 'node:fs/promises';import {resolve} from 'node:path';import {z} from 'zod';
 import {Engine} from './engine.js';import {FileStore} from './store.js';import {view} from './view.js';
@@ -35,7 +35,7 @@ export function createApp({store=new FileStore(),adminToken=process.env.UNITY_AD
    if(path==='/api/state'&&req.method==='GET')return json(view(await store.read()));
    if(req.method!=='POST')return json({error:'not_found'},404);
    if(path==='/api/tasks')return json(await engine.createAndAdvance(await body(req)),201);
-   if(path==='/api/analytics/sync')return json(await syncAnalytics(store,process.env.UNITY_OS_ANALYTICS_TOKEN??''));
+   if(path==='/api/analytics/sync')return json(await syncAndPlanAnalytics(store,process.env.UNITY_OS_ANALYTICS_TOKEN??''));
    if(path==='/api/github/sync')return json(await syncGitHub(store));
    if(path==='/api/github/tasks'){const input=z.object({key:z.string().max(120)}).strict().parse(await body(req));const snapshot=(await store.read()).github?.snapshot,finding=snapshot?.findings.find(f=>f.key===input.key);if(!finding)return json({error:'github_finding_missing'},400);const ci=finding.kind==='ci_failure';return json(await engine.createAndAdvance({instruction:ci?`GitHub CI run #${finding.number}の失敗原因を調査して`:`GitHub Issue #${finding.number}の対応状況を確認して`,priority:ci?1:2,idempotencyKey:'github-source-'+finding.key.replace(':','-')}));}
    if(path==='/api/run')return json(await engine.runNext());

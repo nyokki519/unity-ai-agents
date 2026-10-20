@@ -18,3 +18,5 @@
 - 当repoが作成済みのunity-ai-agents Workerは、ユーザー指示による機能更新の対象。通常更新では管理者secret/変数/同一DO namespaceを保持し、再登録や状態初期化をしない。他の既存Workerは変更しない。登録時の自動実行は提出タスクだけ最大3工程で停止し、承認/推論/失敗を越えない。
 
 - Analytics読取りは固定https://unity-analytics.vercel.app/api/agent/summaryだけ。専用key未設定で外部通信しない。予約/実参加/PVと欠損母数を分け、収益/リピート/満足度を推測しない。停止前の遅延応答をstopCountで拒否。既存Analyticsへの専用API2実装ファイル＋テスト追加/公開はユーザー承認後に完了。画面/DB変更は未承認のまま。キー設定と実データ接続の検証は未完了。
+
+- Analytics取得後の候補判定はルール処理。生のイベント名/IDを保存せず、開催日時・数値根拠・SHA確認キーのみ。古い/partialな値から予約不足を断定しない。1取得最大3件の内部確認タスク、固定keyで重複抑止、stopCount/snapshot fence。細分類とAI原因判断は未実装。

@@ -29,3 +29,7 @@
 ## Workers通信の互換性修正
 
 Cloudflare Workersはredirect:errorをサポートしないため、Analytics/GitHubともredirect:manualで3xxを拒否する。移動先への追跡・キー転送は行わない。実workerdのnative fetchを模擬upstreamにつなぐ回帰テストで、正常応答と302拒否（呼出し1回）を検証する。失敗後の再取得は5分、成功後は1時間。残り待機秒を画面に表示し、古い失敗を新しい試行と混同しない。
+
+## 取得後の確認タスク
+
+取得時に数値/日時から確認候補を導出し、候補の根拠だけを保持する機能を追加。元イベントID/名前は保持しない。取得成功後に最大3タスクを生成する。基準と重複/停止/容量時の扱いはdocs/ANALYTICS-TASKS.md参照。旧snapshotはfindings=[]として読み、次の取得から判定する。

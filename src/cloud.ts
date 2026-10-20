@@ -1,4 +1,4 @@
-import {syncAnalytics} from './analytics.js';
+import {syncAndPlanAnalytics} from './analytics-tasks.js';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
 import {State,emptyState,type StateData} from './model.js';
@@ -95,7 +95,7 @@ export class CloudConsole {
    if(path==='/api/tasks')return json(await this.engine.createAndAdvance(await readBody(req)),201);
    if(path==='/api/run')return json(await this.engine.runNext());
    if(path==='/api/stop'){const input=z.object({stopped:z.boolean()}).strict().parse(await readBody(req));if(access.limited&&!input.stopped)return json({error:'rate_limited'},429);return json(await this.engine.stop(input.stopped));}
-   if(path==='/api/analytics/sync')return json(await syncAnalytics(this.store,this.env.UNITY_ANALYTICS_READ_TOKEN??''));
+   if(path==='/api/analytics/sync')return json(await syncAndPlanAnalytics(this.store,this.env.UNITY_ANALYTICS_READ_TOKEN??''));
    if(path==='/api/github/sync')return json(await syncGitHub(this.store,new GitHubReader(fetch,()=>new Date(),'')));
    if(path==='/api/github/tasks'){
     const input=z.object({key:z.string().max(120)}).strict().parse(await readBody(req));const finding=(await this.store.read()).github?.snapshot?.findings.find(f=>f.key===input.key);
