@@ -1,5 +1,10 @@
 # 作業記録 — 2026-10-18 JST
 
+## 読取りキー設定後（2026-10-20 JST・最優先）
+- 所有者がVercel AGENT_READ_TOKENとWorker UNITY_ANALYTICS_READ_TOKENを登録。Workerは最初plain_textだったため設定変更を依頼し、変更後settings APIでsecret_textを確認した。秘密値は読出し/ログ出力なし。
+- Vercelへの設定反映用にGitHub APIの認証済みdefault identityで同一tree commit0666e086を作成。既存コードの変更なし・force-pushなし。Vercel Deployment has completed（success）を確認。
+- 実URLへのHTTP確認は当環境のCONNECT403が継続。キー値の一致や実DB集計成功は未確認。利用者が管理画面の連携状況→Unity Analytics→集計データを読み取るで確認する。成功するまで実データ連携完了とは報告しない。
+
 ## Analytics API反映（2026-10-20 JST・最優先）
 - ユーザーが既存Analyticsの専用API2実装ファイル＋テストの追加・公開を明示承認。既存Analyticsをorigin/mainへfast-forwardし、承認された3ファイルだけをcommit43cd81fでpush。画面/DB/他コードの変更なし。以前からのuntracked docs/agent-summary.mdとpackage-lock.jsonはそのまま残した。
 - 検証: 専用API6テスト、全333テスト、型検査、本番Next buildすべて成功。独立レビューblockerなし。
