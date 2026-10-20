@@ -1,5 +1,14 @@
 # 作業記録 — 2026-10-18 JST
 
+## Analytics API反映（2026-10-20 JST・最優先）
+- ユーザーが既存Analyticsの専用API2実装ファイル＋テストの追加・公開を明示承認。既存Analyticsをorigin/mainへfast-forwardし、承認された3ファイルだけをcommit43cd81fでpush。画面/DB/他コードの変更なし。以前からのuntracked docs/agent-summary.mdとpackage-lock.jsonはそのまま残した。
+- 検証: 専用API6テスト、全333テスト、型検査、本番Next buildすべて成功。独立レビューblockerなし。
+- ローカルgitのauthorメールがGitHub accountに結び付いておらず、Vercelの最初の自動deployは拒否。GitHub APIへauthor/committerを指定せず、認証済みnyokki519として同一treeの再デプロイcommit b5fce4aを作成。author/committer.login一致、Vercel status=success・Deployment has completedを確認。identityの偽装やforce-pushなし。
+- 公開したAPIはAGENT_READ_TOKEN未設定/不一致では401、DB未設定では503。実応答はこの環境のegress制限で未検証。Vercel API認証VERCEL_TOKENは未提供のため、既存の環境変数一覧/設定値は読んでいない。
+- 残作業: 利用者がAnalytics側ProductionのAGENT_READ_TOKENと新WorkerのUNITY_ANALYTICS_READ_TOKENへ同じ専用キーをSecretとして設定する。値をチャット/Gitに送らない。Vercel設定保存後は認証済みGitHubの同一tree再デプロイで反映可能。
+- 環境設定: 既存proxy-secretの送信先追加はツールから拒否され、元bindingは未変更。新しいnetwork許可unity-analytics.vercel.appとunity-ai-agents.kukki519.workers.devだけ既存hostsを保持してdraftへ保存済み、requires_publish=true。保存/公開後の実HTTP検証が必要。既存tokenを未許可hostへ転送しない。
+- まだ接続成功・実データ取得・数値一致とは報告しない。追加契約/課金API/DB変更なし。
+
 ## Analytics読取り準備（2026-10-20 JST・最優先）
 - 利用者が現URL https://unity-analytics.vercel.app を確認。旧previewへの匿名/専用tokenのGETはいずれもCONNECT403。現URLへの通信許可/既存proxy-secret送信先は未設定で、認証を未許可hostへ転送していない。
 - Analytics GitHub package.jsonは読めるがapp/api/agent/summary/route.tsは404。ローカルのroute/lib/testは以前のuntrackedファイルで、既存repoには今回書き込んでいない。本番に手動公開されているかは未確認。
