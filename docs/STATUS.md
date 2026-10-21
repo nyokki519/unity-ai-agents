@@ -1,5 +1,13 @@
 # 作業記録 — 2026-10-18 JST
 
+## 無料AIの日次改善提案（2026-10-21 JST・最優先）
+- 次段階の利用者承認に従い、日次取得後の全体集計だけを固定Workers AIモデル@cf/meta/llama-3.1-8b-instruct-fp8-fastへ渡す経路を実装。入力6000文字、出力1024token、UTC日次1試行（失敗含む）。データは数値/日時/母数だけの投影、任意タスク文/候補自由文/名前/ID/秘密値は送らない。
+- 厳格JSON/Zodで最大3案を検証し、未検証の提案としてダッシュボード表示。タスク自動完了/外部送付/コード変更なし。paidApiCalls=0固定は維持、usage.aiCallsは予約済み無料試行数へ拡張（旧0状態互換）。State.freeAIはdefault nullで旧データ維持。
+- UTC日次claim、25s結果待ちtimeout、当日再試行なし。完全かつ36h内のみ、停止/源データ変更/stopCountを保存時にもfence。定期経路だけ全リクエストmutexを保持せず、待機中の停止APIが処理可能。原子的State transactionは維持。失敗/データ不足は安全な理由コードだけで記録。
+- 検証: 新規テスト失敗確認→実装、全Vitest66成功、型検査/build/dry-run成功。追加の保留状態変更後は対象6テスト/型検査/buildを再確認。native workerdで模擬AI binding/RPC→日次提案保存→再起動日次重複0、AI待機中の公開停止→再開→応答破棄を確認。390px模擬stateで初回待ち/提案/未確認事項の表示、はみ出し/JSエラーなし。独立review blockerなし。
+- Worker versiondad664d3-0d5a-412e-bbeb-4bda92595c48が100% active。AI binding追加、既存secret binding metadata/同一DO namespace/Origin/Freeフラグ/Cron40 22 * * *保持をAPI確認。Paid切替/新規契約/既存Unity変更なし。
+- 実モデル成功は未確認。無害な64tokenの公式REST probeは現在のAPI tokenで401（応答本文は出さず、秘密値の抽出/再設定なし）。Worker AI bindingは別認証経路で設定済み。次の日次実行結果で確認する必要がある。模擬試験や設定成功を本番生成成功と報告しない。docs/FREE-AI.md参照。
+
 ## 無人の日次取得・内部判定（2026-10-21 JST・最優先）
 - 完全自律化を望む利用者の指示に対し、まずルール処理の無人化を実装。Workers Cron毎日07:40 JSTで既存Analytics GET→判定→最大3内部確認タスク。人の画面操作/常時端末は不要。既存無料設定/キー利用、停止/重複/容量/推論境界を維持。
 - JST日次claimと最新結果をDOへ保存。再配信/再起動でも同日重複なし。キー未設定/停止は通信0、失敗日ループなし、次日へ。中断はrunningを残し完了としない。最新1回の状態/作成件数をダッシュボード「自動監視」に表示。過去日の一覧保存やAI実行/対外操作は未実装。

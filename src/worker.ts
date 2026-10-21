@@ -8,7 +8,7 @@ interface Env extends CloudEnv {
 export class UnityConsole {
  private console:CloudConsole;
  constructor(private ctx:Context,env:CloudEnv){this.console=new CloudConsole(ctx.storage,env);}
- fetch(request:Request){return this.ctx.blockConcurrencyWhile(()=>this.console.fetch(request));}
+ fetch(request:Request){if(new URL(request.url).pathname==='/_internal/daily')return this.console.fetch(request);return this.ctx.blockConcurrencyWhile(()=>this.console.fetch(request));}
 }
 export default {
  async scheduled(_event:unknown,env:Env):Promise<void>{

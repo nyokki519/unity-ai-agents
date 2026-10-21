@@ -1,3 +1,4 @@
+import {runFreeAI,type AIPort} from './free-ai.js';
 import {runDaily,DAILY_KEY,DailyRecord} from './daily.js';
 import {syncAndPlanAnalytics} from './analytics-tasks.js';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
@@ -37,7 +38,7 @@ export class CloudStore implements StateStore {
 const Auth=z.object({epoch:z.string().default(''),sessions:z.array(z.object({hash:z.string(),csrf:z.string(),expires:z.number()})).max(100),minute:z.number(),logins:z.number(),calls:z.number(),day:z.string(),daily:z.number()});
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 const equal=(a:string,b:string)=>timingSafeEqual(Buffer.from(digest(a),'hex'),Buffer.from(digest(b),'hex'));
-export type CloudEnv={UNITY_ANALYTICS_READ_TOKEN?:string;UNITY_ADMIN_TOKEN?:string;UNITY_PUBLIC_ORIGIN?:string;UNITY_FREE_CLOUD_CONFIRMED?:string};
+export type CloudEnv={AI?:AIPort;UNITY_ANALYTICS_READ_TOKEN?:string;UNITY_ADMIN_TOKEN?:string;UNITY_PUBLIC_ORIGIN?:string;UNITY_FREE_CLOUD_CONFIRMED?:string};
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",'Strict-Transport-Security':'max-age=31536000'};
 async function readBody(req:Request){
  const reader=req.body?.getReader();if(!reader)return {};
@@ -56,7 +57,7 @@ export class CloudConsole {
   if(mutation&&req.headers.get('Origin')!==origin)return json({error:'origin_rejected'},403);
   if(req.headers.get('Sec-Fetch-Site')==='cross-site')return json({error:'origin_rejected'},403);
   const path=url.pathname;
-  if(path==='/_internal/daily'){if(req.method!=='POST'||!equal(req.headers.get('Authorization')??'','Bearer '+this.env.UNITY_ADMIN_TOKEN))return json({error:'unauthorized'},401);try{return json(await runDaily(this.store,this.storage,this.env.UNITY_ANALYTICS_READ_TOKEN??''));}catch{return json({error:'daily_run_failed'},503);}}
+  if(path==='/_internal/daily'){if(req.method!=='POST'||!equal(req.headers.get('Authorization')??'','Bearer '+this.env.UNITY_ADMIN_TOKEN))return json({error:'unauthorized'},401);try{const daily=await runDaily(this.store,this.storage,this.env.UNITY_ANALYTICS_READ_TOKEN??'');if(['success','partial'].includes(daily.status))await runFreeAI(this.store,this.env.AI,this.env.UNITY_FREE_CLOUD_CONFIRMED==='true');return json(daily);}catch{return json({error:'daily_run_failed'},503);}}
   if(path==='/api/health'&&req.method==='GET')return json({status:'cloud_ready'});
   try{
    const now=Date.now(),minute=Math.floor(now/60000),day=new Date(now).toISOString().slice(0,10);
@@ -91,7 +92,7 @@ export class CloudConsole {
     return json({ok:true},200,{'Set-Cookie':'unity_session=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'});
    }
    if(path==='/api/state'&&req.method==='GET'){
-    const data=view(await this.store.read()),last=await this.storage.get(DAILY_KEY);return json({...data,automation:{schedule:'毎日07:40（日本時間）',lastRun:last?DailyRecord.parse(last):null},usage:{...data.usage,mode:'cloud_rules_only',cloudUsage:null}});
+    const data=view(await this.store.read()),last=await this.storage.get(DAILY_KEY);return json({...data,freeAIConfigured:!!this.env.AI,automation:{schedule:'毎日07:40（日本時間）',lastRun:last?DailyRecord.parse(last):null},usage:{...data.usage,mode:'cloud_rules_only',cloudUsage:null}});
    }
    if(req.method!=='POST')return json({error:'not_found'},404);
    if(path==='/api/tasks')return json(await this.engine.createAndAdvance(await readBody(req)),201);

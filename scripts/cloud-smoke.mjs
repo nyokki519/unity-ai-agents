@@ -39,5 +39,20 @@ try{
  const dailyLogin=await post('/api/login',{token}),dailySession=await dailyLogin.json(),dailyHeaders={cookie:dailyLogin.headers.get('set-cookie').split(';')[0],'x-csrf-token':dailySession.csrf};
  state=await (await mf.dispatchFetch(origin+'/api/state',{headers:dailyHeaders})).json();assert.equal(state.automation.lastRun.status,'success');assert.equal(state.automation.lastRun.created,1);assert.equal(state.tasks[0].status,'awaiting_inference');
  await mf.dispose();mf=new Miniflare(convertV4MiniflareOptions({...options,resourcePersistencePath:join(directory,'daily-test')}));await (await mf.getWorker()).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});assert.equal(upstreamCalls,1,'persisted daily claim must survive restart');
- console.log('PASS: workerd assets/auth/CSRF/automatic task execution/native Analytics fetch/finding task creation/redirect refusal/SQLite restart persistence/emergency stop/logout/daily cron and deduplication');
+ await mf.dispose();upstreamCalls=0;
+ const aiOptions=convertV4MiniflareOptions({...options,resourcePersistencePath:join(directory,'ai-test'),serviceBindings:{...options.serviceBindings,AI:{name:'ai-mock',entrypoint:'FakeAI'}}});
+ const mockAI=convertV4MiniflareOptions({name:'ai-mock',modules:true,compatibilityDate:'2026-10-18',script:`import {WorkerEntrypoint} from 'cloudflare:workers';export class FakeAI extends WorkerEntrypoint {async run(model,input){await new Promise(r=>setTimeout(r,100));if(model!=='@cf/meta/llama-3.1-8b-instruct-fp8-fast'||input.max_tokens!==1024||JSON.stringify(input).includes('private'))throw new Error('unsafe_input');return {response:JSON.stringify({summary:'確認を優先',proposals:[{action:'告知状況を確認',reason:'参照情報が未取得',effect:'判断材料を整理',effort:'low',risk:'原因は未確認',verification:'確認日時を記録'}],unverified:['施策効果は未確認']})};}}export default {fetch(){return new Response('mock');}};`});
+ aiOptions.workers.push(...mockAI.workers);mf=new Miniflare(aiOptions);
+ await (await mf.getWorker('unity-ai-agents')).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});
+ const aiLogin=await post('/api/login',{token}),aiSession=await aiLogin.json(),aiHeaders={cookie:aiLogin.headers.get('set-cookie').split(';')[0],'x-csrf-token':aiSession.csrf};
+ state=await (await mf.dispatchFetch(origin+'/api/state',{headers:aiHeaders})).json();assert.equal(state.freeAI.status,'succeeded',JSON.stringify(state.freeAI));assert.equal(state.usage.aiCalls,1);assert.equal(state.usage.paidApiCalls,0);assert.equal(state.tasks[0].status,'awaiting_inference');
+ await mf.dispose();mf=new Miniflare(aiOptions);await (await mf.getWorker('unity-ai-agents')).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});
+ state=await (await mf.dispatchFetch(origin+'/api/state',{headers:aiHeaders})).json();assert.equal(state.usage.aiCalls,1,'AI claim must survive restart');assert.equal(state.freeAI.result.proposals.length,1);assert.equal(upstreamCalls,1);
+ await mf.dispose();mf=new Miniflare({...aiOptions,resourcePersistencePath:join(directory,'ai-stop-test')});
+ const stopLogin=await post('/api/login',{token}),stopSession=await stopLogin.json(),stopHeaders={cookie:stopLogin.headers.get('set-cookie').split(';')[0],'x-csrf-token':stopSession.csrf};
+ const pendingAI=(await mf.getWorker('unity-ai-agents')).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});let observedRunning=false;
+ for(let i=0;i<100;i++){state=await (await mf.dispatchFetch(origin+'/api/state',{headers:stopHeaders})).json();if(state.freeAI?.status==='running'){observedRunning=true;break;}await new Promise(r=>setTimeout(r,5));}
+ assert.ok(observedRunning,'stop must interleave while AI is waiting');assert.equal((await post('/api/stop',{stopped:true},stopHeaders)).status,200);assert.equal((await post('/api/stop',{stopped:false},stopHeaders)).status,200);await pendingAI;
+ state=await (await mf.dispatchFetch(origin+'/api/state',{headers:stopHeaders})).json();assert.equal(state.freeAI.status,'held');assert.equal(state.freeAI.result,null);assert.equal(state.usage.aiCalls,1);
+ console.log('PASS: workerd assets/auth/CSRF/automatic task execution/native Analytics fetch/finding task creation/redirect refusal/SQLite restart persistence/emergency stop/logout/daily cron and deduplication/mock AI binding projection/restart/stop-resume fence');
 }finally{await mf.dispose();await rm(directory,{recursive:true,force:true});}

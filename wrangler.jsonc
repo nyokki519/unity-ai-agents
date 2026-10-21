@@ -11,5 +11,6 @@
   "migrations": [{"tag": "v1", "new_sqlite_classes": ["UnityConsole"]}],
   "observability": {"enabled": false},
   "triggers": {"crons": ["40 22 * * *"]},
+  "ai": {"binding": "AI"},
   "keep_vars": true
 }
