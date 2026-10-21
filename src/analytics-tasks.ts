@@ -1,3 +1,4 @@
+import {marketingContext} from './marketing-context.js';
 import {analyticsGuidance,formatGuidance} from './analytics-guidance.js';
 import {Engine} from './engine.js';
 import type {StateStore} from './state-store.js';
@@ -12,7 +13,7 @@ export async function createAnalyticsTasks(store:StateStore){
   if(a.tasksProcessedAt===a.lastSuccessAt)return {status:'already_processed' as const};
   a.tasksProcessedAt=a.lastSuccessAt;
   const findings=a.snapshot.findings.filter(f=>!s.requests.some(r=>r.key===requestKey(f.key))).slice(0,3);
-  return {status:'claimed' as const,findings,observedAt:a.snapshot.observedAt,successAt:a.lastSuccessAt,stopCount:s.safety.stopCount};
+  return {status:'claimed' as const,findings,analytics:structuredClone(a),observedAt:a.snapshot.observedAt,successAt:a.lastSuccessAt,stopCount:s.safety.stopCount};
  });
  if(claim.status!=='claimed')return {status:claim.status,created:0};
  const guarded:StateStore={read:()=>store.read(),transaction:fn=>store.transaction(s=>{
@@ -23,7 +24,7 @@ export async function createAnalyticsTasks(store:StateStore){
  try{
   for(const finding of claim.findings){
    const time=finding.startsAt?`\n開催予定日時: ${finding.startsAt}`:'';
-   const instruction=`Analytics確認: ${finding.title}${time}\n確認番号: ${finding.key}\n検出時: ${claim.observedAt}\n根拠: ${finding.evidence}\n確認内容: ${finding.check}\nこれはルールによる確認候補です。確認専用タスクです。\n${formatGuidance(analyticsGuidance(finding.kind))}`;
+   const instruction=`Analytics確認: ${finding.title}${time}\n確認番号: ${finding.key}\n検出時: ${claim.observedAt}\n根拠: ${finding.evidence}\n確認内容: ${finding.check}\nこれはルールによる確認候補です。確認専用タスクです。\n${formatGuidance(analyticsGuidance(finding.kind))}${finding.kind==='booking_gap'?'\n'+marketingContext(claim.analytics,requestKey(finding.key))+'\n集客改善案の下書きを最大3件、根拠・反論・未確認事項・期待効果・難易度・費用・リスク・完了条件とともに整理してください。外部操作は行いません。':''}`;
    const task=await engine.create({instruction,priority:finding.priority,idempotencyKey:requestKey(finding.key)});
    created++;await engine.runNext(task.id);
   }

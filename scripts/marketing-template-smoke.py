@@ -16,6 +16,6 @@ try:
   entry.fill('');page.get_by_role('button',name='集客確認テンプレートを入れる',exact=True).click();assert '開催日時（日本時間）: 未確認' in entry.input_value();assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
   entry.fill(entry.input_value().replace('定員: 未確認','定員: 30').replace('予約数・残席: 未確認','予約数・残席: 10 / 20'))
   page.get_by_role('button',name='指示を登録',exact=True).click();page.get_by_role('heading',name='次のイベントの集客改善案を整理して',exact=True).wait_for();assert not errors
-  data=page.evaluate("fetch('/api/state').then(r=>r.json())");task=next(t for t in data['tasks'] if t['instruction'].startswith('次のイベント'));assert task['status']=='awaiting_inference';assert task['steps'][0]['agent']=='Marketing';assert '定員: 30' in task['handoff'];assert data['usage']['aiCalls']==0;assert data['usage']['externalApiCalls']==0;b.close()
+  data=page.evaluate("fetch('/api/state').then(r=>r.json())");task=next(t for t in data['tasks'] if t['instruction'].startswith('次のイベント'));assert task['status']=='awaiting_inference';assert task['steps'][0]['agent']=='Marketing';assert '定員: 30' in task['handoff'];assert '【自動添付・Analytics参照データ' in task['handoff'];assert 'Analytics: 未取得' in task['handoff'];assert data['usage']['aiCalls']==0;assert data['usage']['externalApiCalls']==0;b.close()
  print('PASS: 390px template, input protection, edited briefing persisted, Marketing handoff, no external calls or JS errors/overflow')
 finally:p.terminate();p.wait();shutil.rmtree(root)
