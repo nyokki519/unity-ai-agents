@@ -16,6 +16,7 @@ function render(){
  const nav=$('tabs');nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();});nav.append(b);}
  $('content').replaceChildren();
  if(tab==='ダッシュボード'){
+  const next=card('次に確認すること');for(const item of state.attention??[]){next.append(el('p',item.message));button(item.target+'を開く',async()=>{tab=item.target;},next);}if(!state.attention?.length)next.append(el('p','保存済みデータから検出した確認事項はありません。全サービスの正常稼働や施策の有効性を保証するものではありません。'));
   const c=card('今日の状態（日本時間・実行工程単位）'),grid=el('div',undefined,'grid');for(const [label,value] of [['本日の実行',state.metrics.todayExecutions],['成功',state.metrics.success],['失敗',state.metrics.failed],['保留タスク',state.metrics.pending],['承認待ち',state.metrics.approvalWaiting]]){const item=el('div');item.append(el('p',label),el('span',String(value),'stat'));grid.append(item);}c.append(grid,el('p','最終実行: '+date(state.metrics.lastRun)),el('p','AI推論は手動引継ぎです。外部データの取得状況は「連携状況」で確認できます。'));button('キューを1工程進める（手動）',()=>request('/api/run',{}),c);button('状態を再取得',async()=>{},c);
  }
  if(tab==='エージェント')for(const a of state.registry){const c=card(a.name+' Agent');c.append(el('p',a.description),el('p','使用可能: '+a.tools.join(', ')),el('small','必要時のみ。AIモデルの常駐プロセスではありません。'));details(c,'入出力と権限',JSON.stringify({input:a.input,output:a.output,permissions:a.permissions},null,2));}
