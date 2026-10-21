@@ -1,5 +1,11 @@
 # 作業記録 — 2026-10-18 JST
 
+## 集客確認テンプレート（2026-10-21 JST・最優先）
+- 利用者の集客改善案の実装指示を、既存Agents内の確認/依頼ひな形として実装。タスク登録へ入力ボタンを追加。イベント情報・予約数・告知履歴・申込導線・同じ開催前日数の比較・次回確認を未確認初期値で整理。既存入力を上書きせず、通常のMarketing手動引継ぎを利用。
+- 依頼は最大3案/期待効果/難易度/費用/リスク/実現可能性/運営負荷/完了条件を求める。外部操作・自動データ補完・告知変更・有料推論は行わない。既存API/schema/権限は変更なし。
+- 検証: 新規2テストの失敗確認→実装、全Vitest52成功、typecheck/build/dry-run/native workerd smoke成功。390px Chromiumで入力保護→ひな形編集→登録→Marketing引継ぎ、AI/外部API呼出し0・JSエラー/はみ出しなし。独立review blockerなし。scripts/marketing-template-smoke.py参照。
+- Worker versionb77632ce-4d01-4b6f-9c9d-7d09f30405f1が100% active。secret binding metadata・同一DO namespace・Origin・Freeフラグ保持をAPI確認。既存Unityシステム未変更。実URL新画面は環境egress制限で未確認。
+
 ## 確認結果の日本語フォーム（2026-10-21 JST・最優先）
 - 引継ぎ待ちの結果取り込みに、要約・根拠・反論/注意点・未確認事項・次回確認予定のフォームを追加。JSON詳細入力も保持。保存済みstep結果をタスク内へtextContentで表示。長い箇条書きの折返しを改善。
 - 既存handoff API/Result schemaをそのまま利用。次回確認は未確認事項の予定メモとして保存し、自動予約・通知・完了判定はしない。保存後は既存の次工程待ち。各項目/件数制限、空白要約拒否、エラー時入力保持。状態移行/権限/外部API追加なし。
