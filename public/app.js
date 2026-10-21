@@ -11,6 +11,25 @@ async function request(path,value){const r=await fetch(path,{method:value===unde
 async function refresh(){state=await request('/api/state');render();}
 async function perform(action){if(busy)return;busy=true;$('notice').textContent='';document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await action();if(csrf)await refresh();}catch(e){$('notice').textContent='処理を完了できませんでした: '+e.message;}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 function details(parent,title,text){const d=el('details');d.append(el('summary',title),el('pre',text));parent.append(d);}
+function resultForm(parent,t){
+ const form=el('form'),fields={};
+ for(const [key,title,placeholder,max] of [
+  ['summary','確認結果の要約（必須）','確認できたことと、まだ判断できないこと',2000],
+  ['evidence','確認した根拠（1行1件・最大8件）','参照した集計・記録・確認日時。個人情報や秘密値は入力しない',16000],
+  ['objections','反論・注意点（1行1件・最大8件）','別の可能性や、この結果の限界',16000],
+  ['unverified','未確認事項（1行1件・最大8件）','分からない点は未確認と記録する',16000],
+  ['next','次回の確認予定・担当候補（任意）','例: 明日の昼に運営担当が予約数を再確認。自動予約や通知は行いません',1980],
+ ]){const label=el('label',title),input=el('textarea');input.maxLength=max;input.placeholder=placeholder;input.required=key==='summary';label.append(input);form.append(label);fields[key]=input;}
+ form.append(el('small','内容は未検証の記録として保存します。保存だけで効果確認・タスク完了・予定の自動実行にはなりません。次回確認を入力する場合、未確認事項は7件まで。'));
+ const submit=el('button','確認結果を保存');submit.type='submit';form.append(submit);form.addEventListener('submit',e=>{e.preventDefault();perform(async()=>{
+  const lines=(key,title)=>{const values=fields[key].value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);if(values.length>8)throw new Error(title+'は8件以内で入力してください。');if(values.some(v=>v.length>2000))throw new Error(title+'は1件2000文字以内で入力してください。');return values;};
+  const summary=fields.summary.value.trim();if(!summary)throw new Error('確認結果の要約を入力してください。');const evidence=lines('evidence','根拠'),objections=lines('objections','反論・注意点'),unverified=lines('unverified','未確認事項');if(fields.next.value.trim())unverified.push('次回確認（予定・未検証）: '+fields.next.value.trim());if(unverified.length>8)throw new Error('次回確認がある場合、未確認事項は7件以内で入力してください。');
+  await request('/api/tasks/'+t.id+'/handoff',{summary,evidence,objections,unverified});
+ });});parent.append(form);
+ const advanced=el('details');advanced.append(el('summary','JSONで取り込む（詳細操作）'));const label=el('label','人が確認した結果JSON'),area=el('textarea');area.placeholder='{"summary":"要約","evidence":[],"objections":[],"unverified":[]}';label.append(area);advanced.append(label);button('JSONの結果を取り込む（未検証）',()=>request('/api/tasks/'+t.id+'/handoff',JSON.parse(area.value)),advanced);parent.append(advanced);
+}
+function savedResults(parent,t){for(const step of t.steps){if(!step.result)continue;const r=step.result;parent.append(el('h3','保存された結果（効果は未検証）'),el('p',r.summary));for(const [title,values] of [['根拠',r.evidence],['反論・注意点',r.objections],['未確認事項・次回確認',r.unverified]]){if(!values.length)continue;parent.append(el('h4',title));const list=el('ul');for(const value of values)list.append(el('li',value));parent.append(list);}}}
+
 function render(){
  $('mode').textContent=state.stopped?'緊急停止中':state.usage.mode==='cloud_rules_only'?'クラウド・ルール実行':'ローカル・ルール実行';$('stop').textContent=state.stopped?'停止を解除':'緊急停止';
  const nav=$('tabs');nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();});nav.append(b);}
@@ -23,7 +42,7 @@ function render(){
  if(tab==='タスク'){
   const c=card('新しい指示'),form=el('form'),label=el('label','依頼内容'),input=el('textarea');input.required=true;input.maxLength=4000;input.placeholder='例: このシステムの稼働状態を確認 / 集客改善案を考えて';label.append(input);const select=el('select');for(const [value,text] of [['1','優先度 高'],['2','優先度 通常'],['3','優先度 低']]){const o=el('option',text);o.value=value;o.selected=value==='2';select.append(o);}const submit=el('button','指示を登録');form.append(label,select,submit);form.addEventListener('submit',e=>{e.preventDefault();perform(async()=>{await request('/api/tasks',{instruction:input.value,priority:Number(select.value),idempotencyKey:crypto.randomUUID()});input.value='';});});c.append(form,el('small','登録後、安全なルール処理は自動で進みます。AIへの引継ぎ・承認待ちでは停止します。秘密情報・個人情報は入力しないでください。'));
   for(const t of [...state.tasks].reverse().slice(0,50)){const item=card(t.instruction.split('\n')[0]);if(t.instruction.includes('\n'))details(item,'依頼内容・根拠',t.instruction);item.append(el('span',labels[t.status]||t.status,'badge'),el('p','優先度 '+t.priority+' / '+date(t.createdAt)),el('small',t.id));if(t.guidance){const guide=el('details');guide.append(el('summary','確認手順・完了条件'));const steps=el('ol');for(const step of t.guidance.steps)steps.append(el('li',step));guide.append(steps,el('h3','完了として記録する条件'));const done=el('ul');for(const condition of t.guidance.doneWhen)done.append(el('li',condition));guide.append(done,el('p',t.guidance.ifUnknown));item.append(guide);}if(t.dependencies.length)item.append(el('p','依存タスク: '+t.dependencies.join(', ')));if(['queued','running'].includes(t.status))button('中断',()=>request('/api/tasks/'+t.id+'/pause',{}),item);if(t.status==='paused')button('再開',()=>request('/api/tasks/'+t.id+'/resume',{}),item);
-   details(item,'実行計画',JSON.stringify(t.steps,null,2));if(t.error)item.append(el('p','診断: '+t.error));if(t.handoff){details(item,'ChatGPT / Codexへの引継ぎプロンプト',t.handoff);const l=el('label','人が確認した結果JSON'),area=el('textarea');area.placeholder='{"summary":"要約","evidence":[],"objections":[],"unverified":[]}';l.append(area);item.append(l);button('結果を取り込む（内容は未検証として扱う）',()=>request('/api/tasks/'+t.id+'/handoff',JSON.parse(area.value)),item);}
+   details(item,'実行計画',JSON.stringify(t.steps,null,2));if(t.error)item.append(el('p','診断: '+t.error));savedResults(item,t);if(t.handoff){details(item,'ChatGPT / Codexへの引継ぎプロンプト',t.handoff);resultForm(item,t);}
   }
   if(state.tasks.length>50)c.append(el('p','画面は最新50件です。保存容量は最大500タスク。'));
  }
