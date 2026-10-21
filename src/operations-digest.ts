@@ -28,5 +28,6 @@ export function operationsDigest(s:StateData,now=new Date()){
  const generatedAt=now.toISOString(),observedAt=p?.observedAt??null,updatedAt=p?.sourceUpdatedAt??null,lastSuccessAt=a?.lastSuccessAt??null;
  const aiLabel=({not_generated:'生成記録なし',running:'分析中・未完了',failed:'生成失敗',held:'分析保留',unverified:'形式検証済み・内容は未検証',outdated:'参照データ不一致または古い提案'} as Record<string,string>)[ai.status];
  const markdown=[`# ${date} Unity運営サマリー`,headline,`表示用の生成日時: ${generatedAt}`,`データ観測日時: ${observedAt??'未取得'}`,`元データ更新日時: ${updatedAt??'不明'}`,`最終取得成功: ${lastSuccessAt??'未取得'}`,'','## 保存記録から確認できたこと',...facts.map(x=>'- '+x),'','## 次の確認事項',...(next.length?next.map(x=>'- '+x.message):['- 現在の保存記録から追加の確認事項は検出していません。']),'',`AIの記録: ${aiLabel}。モデルの文章はこの書き出しには含めていません。`,'表示時に再構成したサマリーです。日次履歴の保存や外部通知ではありません。'].join('\n');
- return {date,generatedAt,observedAt,updatedAt,lastSuccessAt,sourceStatus,headline,facts,priorities:next,ai,markdown};
+ const metrics=sourceStatus==='usable'&&p?(['bookings','attendance','pageviews'] as const).map(name=>({name,label:{bookings:'予約合計',attendance:'実参加合計',pageviews:'PV累計合計'}[name],...p[name]})):[];
+ return {date,generatedAt,observedAt,updatedAt,lastSuccessAt,sourceStatus,headline,facts,metrics,contextFact:metrics.length?facts[0]:null,supportingFacts:metrics.length?facts.slice(4):facts,priorities:next,ai,markdown};
 }

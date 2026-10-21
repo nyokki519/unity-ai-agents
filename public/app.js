@@ -1,5 +1,5 @@
 'use strict';
-let csrf='',state=null,tab='ダッシュボード',busy=false;
+let csrf='',state=null,tab='ダッシュボード',busy=false,dashboardDetailsOpen=false;
 const tabs=['ダッシュボード','エージェント','タスク','実行履歴','承認待ち','連携状況','監査ログ','設定'];
 const $=id=>document.getElementById(id);
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
@@ -30,12 +30,24 @@ function resultForm(parent,t){
 }
 function savedResults(parent,t){for(const step of t.steps){if(!step.result)continue;const r=step.result;parent.append(el('h3','保存された結果（効果は未検証）'),el('p',r.summary));for(const [title,values] of [['根拠',r.evidence],['反論・注意点',r.objections],['未確認事項・次回確認',r.unverified]]){if(!values.length)continue;parent.append(el('h4',title));const list=el('ul');for(const value of values)list.append(el('li',value));parent.append(list);}}}
 
+function renderDigest(r){
+ const c=card('日次運営サマリー · '+r.date);c.classList.add('overview-card');
+ const tags=el('div',undefined,'status-tags'),tag=el('span',{usable:'保存データを参照',held:'データの判断保留',missing:'データ取得待ち'}[r.sourceStatus]||r.sourceStatus,'status-tag '+(r.sourceStatus==='held'?'status-warning':'status-neutral'));tags.append(tag);
+ const h=state.automation?.health;if(h)tags.append(el('span',{stopped:'自動運転は停止中',attention:'自動運転に要確認あり',waiting:'実行結果の確認待ち',recorded:'取得・生成の完了記録あり'}[h.level]||h.level,'status-tag '+(['attention','stopped'].includes(h.level)?'status-warning':'status-neutral')));c.append(tags,el('p',r.headline,'overview-intro'));
+ const short=x=>x?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(x)):'未取得';c.append(el('p','観測: '+short(r.observedAt)+'（日本時間）','muted'));
+ if(r.contextFact)c.append(el('p',r.contextFact,'muted'));if(r.metrics?.length){const grid=el('div',undefined,'metric-grid');for(const m of r.metrics){const tile=el('div',undefined,'metric-tile');tile.append(el('p',m.label,'metric-label'),el('p',m.value===null?'未取得':m.value.toLocaleString('ja-JP'),'metric-value'+(m.value===null?' value-empty':'')),el('small',m.knownEvents+' / '+m.totalEvents+'イベントから集計'));grid.append(tile);}c.append(grid);}for(const fact of r.supportingFacts??r.facts)c.append(el('p',fact,'digest-note'));
+ c.append(el('h3','次に確認すること'));const list=el('ol',undefined,'priority-list');for(const p of r.priorities){const item=el('li');item.append(el('p',p.message));button(p.target+'で確認',async()=>{tab=p.target;},item);list.append(item);}if(r.priorities.length)c.append(list);else c.append(el('p','保存記録から追加の確認事項は検出していません。','muted'));
+ const ai=el('div',undefined,'ai-summary');ai.append(el('h3','AI要約 · 内容は未検証'),el('p',({not_generated:'生成記録なし',running:'分析中・未完了',failed:'生成失敗。取得できた事実は上に表示しています。',held:'分析保留',unverified:'形式検証済み。提案の実行・効果確認はしていません。',outdated:'参照データが異なるか古いため、ここには提案を掲載しません。'}[r.ai.status]||r.ai.status)));if(r.ai.summary)ai.append(el('p',r.ai.summary));c.append(ai);
+ const metadata=el('details',undefined,'source-details');metadata.append(el('summary','参照データの日時を確認'),el('p','保存データの観測日時: '+(r.observedAt?date(r.observedAt):'未取得')),el('p','元データ更新日時: '+(r.updatedAt?date(r.updatedAt):'不明')));c.append(metadata);
+ const save=el('button','運営サマリーを保存（Markdown）');save.type='button';save.className='export-button';save.addEventListener('click',()=>{if(busy)return;const url=URL.createObjectURL(new Blob([r.markdown],{type:'text/markdown;charset=utf-8'})),link=el('a');link.href=url;link.download='unity-operations-'+r.date+'.md';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});c.append(save,el('small','表示時に保存データから作成。保存ファイルは事実と確認事項だけです。外部通知は行いません。','export-note'));
+}
+
 function render(){
  $('mode').textContent=state.stopped?'緊急停止中':state.usage.mode==='cloud_rules_only'?'クラウド・ルール実行':'ローカル・ルール実行';$('stop').textContent=state.stopped?'停止を解除':'緊急停止';
- const nav=$('tabs');nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();});nav.append(b);}
+ const nav=$('tabs'),navScroll=nav.scrollLeft;nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();nav.querySelector('[aria-current=true]')?.focus({preventScroll:true});});nav.append(b);}nav.scrollLeft=navScroll;
  $('content').replaceChildren();
  if(tab==='ダッシュボード'){
-  if(state.operationsDigest){const r=state.operationsDigest,c=card('日次運営サマリー · '+r.date);c.append(el('p',r.headline),el('p','保存データの観測日時: '+(r.observedAt?date(r.observedAt):'未取得')),el('p','元データ更新日時: '+(r.updatedAt?date(r.updatedAt):'不明')));for(const fact of r.facts)c.append(el('p',fact));c.append(el('h3','優先して確認すること'));for(const p of r.priorities){c.append(el('p',p.message));button(p.target+'で確認',async()=>{tab=p.target;},c);}if(!r.priorities.length)c.append(el('p','保存記録から追加の確認事項は検出していません。'));c.append(el('h3','AI提案の状態（事実とは別）'),el('p',({not_generated:'生成記録なし',running:'分析中・未完了',failed:'生成失敗。事実のサマリーは上に表示しています。',held:'分析保留',unverified:'形式検証済み・内容は未検証',outdated:'参照データが異なるか古いため、ここには提案を掲載しません。'}[r.ai.status]||r.ai.status)));if(r.ai.summary)c.append(el('p',r.ai.summary));const save=el('button','運営サマリーを保存（Markdown）');save.type='button';save.addEventListener('click',()=>{if(busy)return;const url=URL.createObjectURL(new Blob([r.markdown],{type:'text/markdown;charset=utf-8'})),link=el('a');link.href=url;link.download='unity-operations-'+r.date+'.md';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});c.append(save,el('small','表示時に保存データから作成。書き出しは事実と固定ルールの確認事項だけです。外部通知や日次履歴の保存ではありません。'));}
+  if(state.operationsDigest)renderDigest(state.operationsDigest);
 
   if(state.automation?.health){const h=state.automation.health,c=card('自動運転の実行診断');c.append(el('p',{stopped:'緊急停止中',attention:'確認が必要です',waiting:'処理・初回確認待ち',recorded:'直近の取得・AI生成の完了記録があります'}[h.level]||h.level));for(const issue of h.issues){c.append(el('h3',issue.message),el('p',issue.check));}c.append(el('small','保存済み記録の診断です。AI提案の正しさや全サービスの正常稼働を保証するものではありません。'));}
 
@@ -46,6 +58,7 @@ function render(){
   if(state.automation){const auto=card('自動監視'),r=state.automation.lastRun;auto.append(el('p','予定: '+state.automation.schedule),el('p','Analytics取得→確認候補→最大3タスク。無料AIは設定済みの場合のみ日次提案を生成します。外部操作は行いません。'),el('p',!r?'初回の定期実行待ち':date(r.startedAt)+' / '+({running:'実行中・未完了',success:'取得・判定成功',partial:'取得成功・タスク作成は一部/保留',failed:'失敗',stopped:'緊急停止により未実行',not_configured:'読取りキー未設定',cooldown:'取得間隔のため未実行'}[r.status]||r.status)+' / 作成 '+r.created+'件'));}
   const next=card('次に確認すること');for(const item of state.attention??[]){next.append(el('p',item.message));button(item.target+'を開く',async()=>{tab=item.target;},next);}if(!state.attention?.length)next.append(el('p','保存済みデータから検出した確認事項はありません。全サービスの正常稼働や施策の有効性を保証するものではありません。'));
   const c=card('今日の状態（日本時間・実行工程単位）'),grid=el('div',undefined,'grid');for(const [label,value] of [['本日の実行',state.metrics.todayExecutions],['成功',state.metrics.success],['失敗',state.metrics.failed],['保留タスク',state.metrics.pending],['承認待ち',state.metrics.approvalWaiting]]){const item=el('div');item.append(el('p',label),el('span',String(value),'stat'));grid.append(item);}c.append(grid,el('p','最終実行: '+date(state.metrics.lastRun)),el('p','日次の全体改善案は無料AIの設定時に自動生成します。個別の自由な指示は手動引継ぎです。外部データの取得状況は「連携状況」で確認できます。'));button('キューを1工程進める（手動）',()=>request('/api/run',{}),c);button('状態を再取得',async()=>{},c);
+  const sections=[...$('content').children],more=el('details',undefined,'dashboard-details');more.append(el('summary','比較・AI提案・実行履歴の詳細'));for(const section of sections)if(!section.classList.contains('overview-card'))more.append(section);more.open=dashboardDetailsOpen;more.addEventListener('toggle',()=>{dashboardDetailsOpen=more.open;});$('content').append(more);
  }
  if(tab==='エージェント')for(const a of state.registry){const c=card(a.name+' Agent');c.append(el('p',a.description),el('p','使用可能: '+a.tools.join(', ')),el('small','必要時のみ。AIモデルの常駐プロセスではありません。'));details(c,'入出力と権限',JSON.stringify({input:a.input,output:a.output,permissions:a.permissions},null,2));}
  if(tab==='タスク'){
