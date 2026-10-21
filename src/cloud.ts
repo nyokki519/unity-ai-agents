@@ -1,3 +1,4 @@
+import {automationHealth} from './automation-health.js';
 import {runFreeAI,type AIPort} from './free-ai.js';
 import {runDaily,DAILY_KEY,DailyRecord} from './daily.js';
 import {syncAndPlanAnalytics} from './analytics-tasks.js';
@@ -92,7 +93,7 @@ export class CloudConsole {
     return json({ok:true},200,{'Set-Cookie':'unity_session=; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'});
    }
    if(path==='/api/state'&&req.method==='GET'){
-    const data=view(await this.store.read()),last=await this.storage.get(DAILY_KEY);return json({...data,freeAIConfigured:!!this.env.AI,automation:{schedule:'毎日07:40（日本時間）',lastRun:last?DailyRecord.parse(last):null},usage:{...data.usage,mode:'cloud_rules_only',cloudUsage:null}});
+    const data=view(await this.store.read()),last=await this.storage.get(DAILY_KEY),daily=last?DailyRecord.parse(last):null;return json({...data,freeAIConfigured:!!this.env.AI,automation:{schedule:'毎日07:40（日本時間）',lastRun:daily,health:automationHealth(data,daily,!!this.env.AI)},usage:{...data.usage,mode:'cloud_rules_only',cloudUsage:null}});
    }
    if(req.method!=='POST')return json({error:'not_found'},404);
    if(path==='/api/tasks')return json(await this.engine.createAndAdvance(await readBody(req)),201);

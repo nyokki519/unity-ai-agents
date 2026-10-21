@@ -1,0 +1,13 @@
+import {it,expect} from 'vitest';
+import {automationHealth} from '../src/automation-health.js';
+import {emptyState} from '../src/model.js';
+import {DailyRecord} from '../src/daily.js';
+const now=new Date('2026-10-21T12:00:00Z');
+const daily=()=>DailyRecord.parse({day:'2026-10-21',startedAt:new Date(+now-3600000).toISOString(),finishedAt:new Date(+now-3599000).toISOString(),status:'success',created:1});
+function ready(){const s=emptyState();s.freeAI={utcDay:'2026-10-21',startedAt:new Date(+now-3500000).toISOString(),finishedAt:new Date(+now-3490000).toISOString(),sourceAt:new Date(+now-3600000).toISOString(),status:'succeeded',reason:null,result:{summary:'未検証',proposals:[{action:'確認',reason:'根拠',effect:'期待',effort:'low',risk:'未確認',verification:'検証'}],unverified:[]}};return s;}
+it('never calls a missing first record healthy',()=>{expect(automationHealth(emptyState(),null,true,now).level).toBe('waiting');});
+it('diagnoses overdue schedules including previously successful runs',()=>{const d=daily();d.startedAt=new Date(+now-36*3600000-1).toISOString();expect(automationHealth(ready(),d,true,now).issues.map(x=>x.code)).toContain('schedule_overdue');});
+it('flags stale unfinished executions instead of claiming success',()=>{const s=ready(),d=daily();d.status='running';d.finishedAt=null;s.freeAI!.status='running';s.freeAI!.finishedAt=null;const codes=automationHealth(s,d,true,now).issues.map(x=>x.code);expect(codes).toContain('daily_stalled');expect(codes).toContain('ai_stalled');});
+it('gives fixed safe instructions for each AI failure and preserves input state',()=>{for(const reason of ['provider_error','timeout','invalid_output'] as const){const s=ready();s.freeAI!.status='failed';s.freeAI!.reason=reason;const before=structuredClone(s);const r=automationHealth(s,daily(),true,now);expect(r.level).toBe('attention');expect(r.issues.find(x=>x.code==='ai_failed')!.check.length).toBeGreaterThan(10);expect(s).toEqual(before);}});
+it('treats intentional stop separately and does not diagnose it as a schedule outage',()=>{const s=ready();s.stopped=true;const r=automationHealth(s,null,true,now);expect(r.level).toBe('stopped');expect(r.issues.map(x=>x.code)).toEqual(['stopped']);});
+it('reports completion only for valid current records and catches missing binding or future times',()=>{expect(automationHealth(ready(),daily(),true,now).level).toBe('recorded');expect(automationHealth(ready(),daily(),false,now).issues.map(x=>x.code)).toContain('ai_not_configured');const d=daily();d.startedAt=new Date(+now+1000).toISOString();expect(automationHealth(ready(),d,true,now).issues.map(x=>x.code)).toContain('clock');});
