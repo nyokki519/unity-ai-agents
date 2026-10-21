@@ -1,3 +1,4 @@
+import {recordOperationDay} from './operations-history.js';
 import {automationHealth} from './automation-health.js';
 import {runFreeAI,type AIPort} from './free-ai.js';
 import {runDaily,DAILY_KEY,DailyRecord} from './daily.js';
@@ -58,7 +59,7 @@ export class CloudConsole {
   if(mutation&&req.headers.get('Origin')!==origin)return json({error:'origin_rejected'},403);
   if(req.headers.get('Sec-Fetch-Site')==='cross-site')return json({error:'origin_rejected'},403);
   const path=url.pathname;
-  if(path==='/_internal/daily'){if(req.method!=='POST'||!equal(req.headers.get('Authorization')??'','Bearer '+this.env.UNITY_ADMIN_TOKEN))return json({error:'unauthorized'},401);try{const daily=await runDaily(this.store,this.storage,this.env.UNITY_ANALYTICS_READ_TOKEN??'');if(['success','partial'].includes(daily.status))await runFreeAI(this.store,this.env.AI,this.env.UNITY_FREE_CLOUD_CONFIRMED==='true');return json(daily);}catch{return json({error:'daily_run_failed'},503);}}
+  if(path==='/_internal/daily'){if(req.method!=='POST'||!equal(req.headers.get('Authorization')??'','Bearer '+this.env.UNITY_ADMIN_TOKEN))return json({error:'unauthorized'},401);try{const previous=await this.storage.get(DAILY_KEY);if(previous)await recordOperationDay(this.store,DailyRecord.parse(previous)).catch(()=>null);const daily=await runDaily(this.store,this.storage,this.env.UNITY_ANALYTICS_READ_TOKEN??'');if(['success','partial'].includes(daily.status))await runFreeAI(this.store,this.env.AI,this.env.UNITY_FREE_CLOUD_CONFIRMED==='true');const history=await recordOperationDay(this.store,daily).catch(()=>({status:'blocked'}));return json({...daily,history});}catch{return json({error:'daily_run_failed'},503);}}
   if(path==='/api/health'&&req.method==='GET')return json({status:'cloud_ready'});
   try{
    const now=Date.now(),minute=Math.floor(now/60000),day=new Date(now).toISOString().slice(0,10);
