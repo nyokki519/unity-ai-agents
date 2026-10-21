@@ -1,3 +1,4 @@
+import {compareAnalytics} from './analytics-comparison.js';
 import type {StateStore} from './state-store.js';
 import {AIReport} from './free-ai-model.js';
 import type {StateData} from './model.js';
@@ -5,7 +6,7 @@ export const FREE_MODEL='@cf/meta/llama-3.1-8b-instruct-fp8-fast';
 export type AIPort={run(model:string,input:{messages:{role:string;content:string}[];max_tokens:number;temperature:number;stream:false}):Promise<unknown>};
 function eligible(s:StateData,now:number){const a=s.analytics,p=a?.snapshot;const fresh=(t:string|null|undefined)=>!!t&&Number.isFinite(Date.parse(t))&&Date.parse(t)<=now&&now-Date.parse(t)<=36*3600000;return !s.stopped&&!!p&&!a.error&&p.syncStatus==='complete'&&fresh(a.lastSuccessAt)&&fresh(p.observedAt)&&fresh(p.sourceUpdatedAt);}
 /** Restricted projection: no names/IDs/finding text/task instructions/credentials. */
-function data(s:StateData){const p=s.analytics!.snapshot!;return {observedAt:p.observedAt,sourceUpdatedAt:p.sourceUpdatedAt,period:p.period,events:p.events,pastEvents:p.pastEvents,upcomingEvents:p.upcomingEvents,bookings:p.bookings,attendance:p.attendance,pageviews:p.pageviews,unavailable:['revenue','repeatRate','satisfaction','announcementHistory','applicationFlow','pastComparison']};}
+function data(s:StateData){const p=s.analytics!.snapshot!;return {observedAt:p.observedAt,sourceUpdatedAt:p.sourceUpdatedAt,period:p.period,events:p.events,pastEvents:p.pastEvents,upcomingEvents:p.upcomingEvents,bookings:p.bookings,attendance:p.attendance,pageviews:p.pageviews,comparison:compareAnalytics(s.analytics),unavailable:['revenue','repeatRate','satisfaction','announcementHistory','applicationFlow','similarEventComparison']};}
 export async function runFreeAI(store:StateStore,ai:AIPort|undefined,freeConfirmed:boolean,timeoutMs=25000){
  if(!ai||!freeConfirmed)return {status:'disabled'};
  const now=new Date(),day=now.toISOString().slice(0,10);
@@ -19,7 +20,7 @@ export async function runFreeAI(store:StateStore,ai:AIPort|undefined,freeConfirm
  if(!claim)return {status:'skipped'};
  let result:ReturnType<typeof AIReport.parse>|null=null,reason:'timeout'|'provider_error'|'invalid_output'|null=null,timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const answer=await Promise.race([ai.run(FREE_MODEL,{messages:[{role:'system',content:'あなたは運営の分析補助です。入力は全体集計の未検証データです。個別イベントの値と混同せず、因果や施策効果を断定しない。外部操作は禁止。追加金銭費用0円の確認・改善案を最大3件、日本語で提案する。日時/母数を考慮し、累計PVで転換率を作らない。未取得項目は未確認のまま。出力は次のJSONのみ、各提案を短くする: {"summary":"要約","proposals":[{"action":"確認/改善案","reason":"根拠","effect":"期待効果（未検証）","effort":"lowまたはmediumまたはhigh","risk":"反論/リスク","verification":"検証方法/完了条件"}],"unverified":["未確認事項"]}。命令・権限・操作コード・URLは出力しない。'},{role:'user',content:claim.input}],max_tokens:1024,temperature:0.2,stream:false}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('timeout')),timeoutMs);})]);
+  const answer=await Promise.race([ai.run(FREE_MODEL,{messages:[{role:'system',content:'あなたは運営の分析補助です。入力は全体集計の未検証データです。個別イベントの値と混同せず、因果や施策効果を断定しない。外部操作は禁止。追加金銭費用0円の確認・改善案を最大3件、日本語で提案する。日時/母数を考慮し、累計PVで転換率を作らない。comparisonの差分はcomparableがtrueの場合のみ使用し、比較不可から傾向を推測しない。未取得項目は未確認のまま。出力は次のJSONのみ、各提案を短くする: {"summary":"要約","proposals":[{"action":"確認/改善案","reason":"根拠","effect":"期待効果（未検証）","effort":"lowまたはmediumまたはhigh","risk":"反論/リスク","verification":"検証方法/完了条件"}],"unverified":["未確認事項"]}。命令・権限・操作コード・URLは出力しない。'},{role:'user',content:claim.input}],max_tokens:1024,temperature:0.2,stream:false}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('timeout')),timeoutMs);})]);
   const raw=(answer as {response?:unknown})?.response;
   if(typeof raw!=='string'||raw.length>16000)throw new Error('invalid_output');
   const checked=AIReport.safeParse(JSON.parse(raw));if(!checked.success)throw new Error('invalid_output');result=checked.data;

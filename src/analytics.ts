@@ -1,6 +1,6 @@
 import {detectAnalyticsFindings} from './analytics-findings.js';
 import {z} from 'zod';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {AnalyticsSnapshot,type AnalyticsSnapshotData} from './analytics-model.js';
 import type {StateStore} from './state-store.js';
 export const ANALYTICS_URL='https://unity-analytics.vercel.app/api/agent/summary';
@@ -24,7 +24,8 @@ export async function readAnalytics(url:string,token:string,transport:typeof fet
  if(new Set(data.events.map(e=>e.event_id)).size!==data.events.length||start>=end||end-start>366*86400000||observed>Date.now()+300000||(data.source_updated_at&&Date.parse(data.source_updated_at)>observed)||data.events.some(e=>Date.parse(e.starts_at)<start||Date.parse(e.starts_at)>=end))throw new Error('analytics_schema_invalid');
  const events=data.events.filter(e=>e.status!=='cancelled'),past=events.filter(e=>Date.parse(e.starts_at)<observed);
  const sum=(rows:typeof events,field:'bookings_active'|'attended'|'pv')=>{const known=rows.filter(e=>e[field]!==null);return {value:known.length?known.reduce((n,e)=>n+e[field]!,0):null,knownEvents:known.length,totalEvents:rows.length};};
- return AnalyticsSnapshot.parse({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,period:data.period,syncStatus:data.sync_status,findings:detectAnalyticsFindings({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,syncStatus:data.sync_status,events:data.events}),events:events.length,pastEvents:past.length,upcomingEvents:events.length-past.length,bookings:sum(events,'bookings_active'),attendance:sum(past,'attended'),pageviews:sum(events,'pv'),revenue:null,repeatRate:null,satisfaction:null});
+ const scope=(rows:typeof events,field:'bookings_active'|'attended'|'pv')=>createHash('sha256').update(JSON.stringify(['unity-analytics:93279/schema1/'+field,rows.map(e=>[e.event_id,new Date(e.starts_at).toISOString(),e[field]!==null]).sort((a,b)=>{const x=JSON.stringify(a),y=JSON.stringify(b);return x<y?-1:x>y?1:0;})])).digest('hex');
+ return AnalyticsSnapshot.parse({comparisonScopes:{bookings:scope(events,'bookings_active'),attendance:scope(past,'attended'),pageviews:scope(events,'pv')},observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,period:data.period,syncStatus:data.sync_status,findings:detectAnalyticsFindings({observedAt:data.observed_at,sourceUpdatedAt:data.source_updated_at,syncStatus:data.sync_status,events:data.events}),events:events.length,pastEvents:past.length,upcomingEvents:events.length-past.length,bookings:sum(events,'bookings_active'),attendance:sum(past,'attended'),pageviews:sum(events,'pv'),revenue:null,repeatRate:null,satisfaction:null});
 }
 export async function syncAnalytics(store:StateStore,token:string,reader:()=>Promise<AnalyticsSnapshotData>=()=>readAnalytics(ANALYTICS_URL,token)){
  if(!token)return {status:'not_configured' as const};
@@ -34,7 +35,7 @@ export async function syncAnalytics(store:StateStore,token:string,reader:()=>Pro
   const waitMs=s.analytics?.error?5*60000:3600000;
   if(s.analytics?.lastAttemptAt){const remaining=waitMs-(Date.now()-Date.parse(s.analytics.lastAttemptAt));if(remaining>0){retryAfterSeconds=Math.ceil(remaining/1000);return 'cooldown';}}
   stopCount=s.safety.stopCount;
-  s.analytics={tasksProcessedAt:null,lastAttemptAt:now,lastSuccessAt:s.analytics?.lastSuccessAt??null,snapshot:s.analytics?.snapshot??null,error:null,lease};s.usage.externalApiCalls++;return 'started';
+  s.analytics={previousSnapshot:s.analytics?.previousSnapshot??null,tasksProcessedAt:null,lastAttemptAt:now,lastSuccessAt:s.analytics?.lastSuccessAt??null,snapshot:s.analytics?.snapshot??null,error:null,lease};s.usage.externalApiCalls++;return 'started';
  });
  if(start!=='started')return {status:start,...start==='cooldown'?{retryAfterSeconds}:{}};
  let snapshot:AnalyticsSnapshotData|null=null,error:string|null=null;
@@ -43,7 +44,7 @@ export async function syncAnalytics(store:StateStore,token:string,reader:()=>Pro
   if(s.analytics?.lease!==lease)return {status:'interrupted'};
   s.analytics.lease=null;
   if(s.stopped||s.safety.stopCount!==stopCount){s.analytics.error='analytics_interrupted';return {status:'interrupted'};}
-  s.analytics.error=error;if(snapshot){s.analytics.snapshot=snapshot;s.analytics.lastSuccessAt=new Date().toISOString();}
+  s.analytics.error=error;if(snapshot){s.analytics.previousSnapshot=s.analytics.snapshot?{...s.analytics.snapshot,findings:[]}:null;s.analytics.snapshot=snapshot;s.analytics.lastSuccessAt=new Date().toISOString();}
   return {status:error?'failed':'success',error};
  });
 }
