@@ -33,5 +33,11 @@ try{
  const redirectLogin=await post('/api/login',{token}),redirectSession=await redirectLogin.json();
  const redirectHeaders={cookie:redirectLogin.headers.get('set-cookie').split(';')[0],'x-csrf-token':redirectSession.csrf};
  const redirectResult=await (await post('/api/analytics/sync',{},redirectHeaders)).json();assert.equal(redirectResult.error,'analytics_http_302');assert.equal(upstreamCalls,1,'must not follow redirect or forward credentials');
- console.log('PASS: workerd assets/auth/CSRF/automatic task execution/native Analytics fetch/finding task creation/redirect refusal/SQLite restart persistence/emergency stop/logout');
+ await mf.dispose();redirectUpstream=false;upstreamCalls=0;mf=new Miniflare(convertV4MiniflareOptions({...options,resourcePersistencePath:join(directory,'daily-test')}));
+ assert.equal((await post('/_internal/daily',{}, {Authorization:'Bearer '+token})).status,404,'internal cron path must be unreachable through public Worker');
+ await (await mf.getWorker()).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});assert.equal(upstreamCalls,1);
+ const dailyLogin=await post('/api/login',{token}),dailySession=await dailyLogin.json(),dailyHeaders={cookie:dailyLogin.headers.get('set-cookie').split(';')[0],'x-csrf-token':dailySession.csrf};
+ state=await (await mf.dispatchFetch(origin+'/api/state',{headers:dailyHeaders})).json();assert.equal(state.automation.lastRun.status,'success');assert.equal(state.automation.lastRun.created,1);assert.equal(state.tasks[0].status,'awaiting_inference');
+ await mf.dispose();mf=new Miniflare(convertV4MiniflareOptions({...options,resourcePersistencePath:join(directory,'daily-test')}));await (await mf.getWorker()).scheduled({cron:'40 22 * * *',scheduledTime:Date.now()});assert.equal(upstreamCalls,1,'persisted daily claim must survive restart');
+ console.log('PASS: workerd assets/auth/CSRF/automatic task execution/native Analytics fetch/finding task creation/redirect refusal/SQLite restart persistence/emergency stop/logout/daily cron and deduplication');
 }finally{await mf.dispose();await rm(directory,{recursive:true,force:true});}

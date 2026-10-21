@@ -21,3 +21,11 @@
 - 課金条件が変わった/不明になったら有効化しない。将来のGitHub定期実行前に、当時の規約・無料条件を再確認する。
 
 GitHubの実利用枠と請求状態は未接続なのでUIでは未取得と表示する。金額/利用量を0と捏造しない。Phase 1のローカル処理追加費用は0円。
+
+## 日次監視（2026-10-21）
+既存のWorkers Free/SQLite DOでCronを1本追加（毎日22:40 UTC＝07:40 JST）。1日最大1回のAnalytics GET、タスク作成最大3件、AI呼出し0。追加契約・有料プランへの変更なし。Free確認フラグと既存管理者設定がない場合は起動しない。取得先の既存システムには1日最大1 GETを追加するため、その既存無料枠も消費する。残枠を実測した値とは報告しない。
+
+同日配信の重複はSQLiteのclaimで抑止し、失敗後の当日自動再試行は行わない。容量上限やAI引継ぎ待ちで止まる。Cronは予定時刻から遅延し得るため、正確な時刻の保証や無制限の安定稼働を前提にしない。Freeの上限で失敗した際にPaidへ自動変更しない。
+
+## 無料推論の調査（未接続）
+2026-10-21、公式 https://developers.cloudflare.com/workers-ai/platform/pricing/ のソース https://github.com/cloudflare/cloudflare-docs/blob/production/src/content/docs/workers-ai/platform/pricing.mdx をGitHub APIで確認。Workers Freeは1日10,000 Neurons、超過はエラー。Paidプランでは超過課金があり、一部モデルは支払手段必須。Free対応モデル候補は存在するが、当実装のAI呼出しはまだ0。無料推論を導入する場合もモデル/回数/出力上限を固定し、プラン確認・データ送付範囲・出力検証・停止境界を別途実装する。全モデル無料とは見なさない。

@@ -35,6 +35,7 @@ function render(){
  const nav=$('tabs');nav.replaceChildren();for(const title of tabs){const b=el('button',title);b.setAttribute('aria-current',String(tab===title));b.addEventListener('click',()=>{tab=title;render();});nav.append(b);}
  $('content').replaceChildren();
  if(tab==='ダッシュボード'){
+  if(state.automation){const auto=card('自動監視'),r=state.automation.lastRun;auto.append(el('p','予定: '+state.automation.schedule),el('p','Analytics取得→確認候補→最大3タスク。AI分析・外部操作は行いません。'),el('p',!r?'初回の定期実行待ち':date(r.startedAt)+' / '+({running:'実行中・未完了',success:'取得・判定成功',partial:'取得成功・タスク作成は一部/保留',failed:'失敗',stopped:'緊急停止により未実行',not_configured:'読取りキー未設定',cooldown:'取得間隔のため未実行'}[r.status]||r.status)+' / 作成 '+r.created+'件'));}
   const next=card('次に確認すること');for(const item of state.attention??[]){next.append(el('p',item.message));button(item.target+'を開く',async()=>{tab=item.target;},next);}if(!state.attention?.length)next.append(el('p','保存済みデータから検出した確認事項はありません。全サービスの正常稼働や施策の有効性を保証するものではありません。'));
   const c=card('今日の状態（日本時間・実行工程単位）'),grid=el('div',undefined,'grid');for(const [label,value] of [['本日の実行',state.metrics.todayExecutions],['成功',state.metrics.success],['失敗',state.metrics.failed],['保留タスク',state.metrics.pending],['承認待ち',state.metrics.approvalWaiting]]){const item=el('div');item.append(el('p',label),el('span',String(value),'stat'));grid.append(item);}c.append(grid,el('p','最終実行: '+date(state.metrics.lastRun)),el('p','AI推論は手動引継ぎです。外部データの取得状況は「連携状況」で確認できます。'));button('キューを1工程進める（手動）',()=>request('/api/run',{}),c);button('状態を再取得',async()=>{},c);
  }
@@ -47,7 +48,7 @@ function render(){
   if(state.tasks.length>50)c.append(el('p','画面は最新50件です。保存容量は最大500タスク。'));
  }
  if(tab==='実行履歴'){
-  const c=card('実行履歴・自己改善の基礎集計');c.append(el('p','定期実行は未設定です。ここには手動で進めたローカル工程を記録します。'));details(c,'実行統計',JSON.stringify(state.optimization,null,2));for(const r of [...state.runs].reverse().slice(0,50))c.append(el('p',`${date(r.startedAt)} / ${labels[r.status]||r.status} / 試行${r.attempt}/3 / ${r.durationMs}ms / ${r.error||'—'}`));
+  const c=card('実行履歴・自己改善の基礎集計');c.append(el('p','ルール処理の工程履歴です。クラウドの定期取得結果はダッシュボードの「自動監視」に表示します。'));details(c,'実行統計',JSON.stringify(state.optimization,null,2));for(const r of [...state.runs].reverse().slice(0,50))c.append(el('p',`${date(r.startedAt)} / ${labels[r.status]||r.status} / 試行${r.attempt}/3 / ${r.durationMs}ms / ${r.error||'—'}`));
  }
  if(tab==='承認待ち'){
   const pending=state.tasks.filter(t=>t.status==='awaiting_approval');const c=card('重要操作の承認');c.append(el('p','Phase 1では本番デプロイ・外部送信などの実行器は未実装です。承認を記録しても実操作は行いません。有効期限15分・対象固定・単回トークンの仕組みを備えています。'));if(!pending.length)c.append(el('p','承認待ちはありません。'));for(const t of pending){const item=card(t.instruction,c);details(item,'固定された対象と計画',JSON.stringify({repository:t.repository,steps:t.steps,operationHash:t.operationHash},null,2));button('承認を記録（実操作は未対応）',async()=>{if(!confirm('対象と操作を確認し、15分有効の承認を記録します。実操作は行いません。'))return;await request('/api/tasks/'+t.id+'/approve',{operationHash:t.operationHash});},item);const a=state.approvals.find(a=>a.taskId===t.id);if(a)item.append(el('p',a.expired?'承認記録は期限切れです。':'承認記録の期限: '+date(a.expiresAt)));}

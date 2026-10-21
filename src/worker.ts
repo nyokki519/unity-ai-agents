@@ -11,6 +11,11 @@ export class UnityConsole {
  fetch(request:Request){return this.ctx.blockConcurrencyWhile(()=>this.console.fetch(request));}
 }
 export default {
+ async scheduled(_event:unknown,env:Env):Promise<void>{
+  if(env.UNITY_FREE_CLOUD_CONFIRMED!=='true'||(env.UNITY_ADMIN_TOKEN?.length??0)<32||!env.UNITY_PUBLIC_ORIGIN?.startsWith('https://'))return;
+  const req=new Request(env.UNITY_PUBLIC_ORIGIN+'/_internal/daily',{method:'POST',headers:{Origin:env.UNITY_PUBLIC_ORIGIN,Authorization:'Bearer '+env.UNITY_ADMIN_TOKEN}});
+  const response=await env.CONSOLE.get(env.CONSOLE.idFromName('unity-console-v1')).fetch(req);if(!response.ok)throw new Error('daily_run_failed');
+ },
  async fetch(request:Request,env:Env):Promise<Response>{
   const url=new URL(request.url);
   if(request.method==='GET'&&['/','/app.js','/style.css'].includes(url.pathname)){
